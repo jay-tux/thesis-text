@@ -1,0 +1,32 @@
+%! Author = jay
+%! Date = 3/28/24
+
+% Preamble
+\documentclass[11pt]{ugent2016-report}
+
+% Packages
+\usepackage{amsmath}
+
+\author{Jonas Sys}
+\title{Quantifying and Mitigating the Cold-Start Problem in GPU Simulation}
+
+% Document
+\begin{document}
+
+    \maketitle
+    \include{abstract}
+    \tableofcontents
+
+    \include{introduction}
+    \include{literature}
+    \include{hardware-analysis}
+    \include{simulator-analysis}
+    \include{mitigation}
+    \include{results}
+    \include{conclusion}
+    % intellij you ok?
+    \cite{sieve} % dummy citation to make bibtex stfu
+    \bibliography{main}
+    \bibliographystyle{plain}
+
+\end{document}
