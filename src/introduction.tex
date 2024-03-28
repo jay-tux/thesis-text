@@ -1,1 +1,18 @@
-\chapter{Introduction}\label{sec:introduction}
+\chapter{Introduction}\label{ch:introduction}
+
+Every year, more and more AI and machine learning papers are published\cite{aiindex}.
+Many machine learning algorithms rely on GPU computations to train their models, creating a growing need for more and faster GPUs.
+Improvements to GPUs can be done, among other means, by improving upon their internal micro-architecture.
+These changes, however, always need to be verified to ensure that they are, in fact, improvements.
+
+When verifying, simulation usually provides results at a lower cost, albeit with lower accuracy.
+To this end, simulators like AccelSim\cite{accelsim} are used.
+However, it has also been shown that simulation has a huge overhead; applications that would take only about an hour on real hardware could easily take upwards of a century\cite{pks}.
+Some research has gone to speeding up this simulation.
+For example Principle Kernel Analysis\cite{pks}, Sieve\cite{sieve}, and Photon\cite{photon} use sampling to select a few kernels, using those as representatives for the entire workload.
+
+The speed-up gained from these techniques comes with a cost to accuracy, as intermediate kernels might have modified the cache state.
+This might lead to superfluous cache misses or incorrect cache hits, as loads and/or evictions might not have been performed.
+This problem is known as the cold-start problem, and has been researched with respect to the simulation of CPUs. % TODO reference?
+
+I aim to show that this problem persists when simulating GPUs, as well as show that it can be mitigated, albeit at the cost of a slightly higher simulation time.
