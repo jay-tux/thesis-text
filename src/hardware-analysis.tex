@@ -1,1 +1,66 @@
 \chapter{The Cold-Start Problem in Hardware}\label{ch:hw-analysis}
+
+Initially, we analyzed some workloads and benchmarks to gather some data on the impact of the cold-start problem in real hardware.
+To this end, we used the NVIDIA Nsight Compute tool, running up to 20000 kernels for each workload.
+Each workload was profiled twice, once as it would normally run, and once where all GPU caches were flushed between kernel invocations.
+After profiling, we computed the IPC values for each kernel, and determined the impact of flushing the cache, i.e., the cold-start problem for that kernel.
+
+\begin{figure}
+    \centering
+    \resizebox{0.45\textwidth}{!}{\input{./figures/hardware/mlperf_cactus_boxplot.pgf}}
+    \resizebox{0.45\textwidth}{!}{\input{./figures/hardware/dct_ocean_boxplot.pgf}}
+    \caption{Relative IPC difference}
+    \label{fig:ipc_diff}
+\end{figure}
+
+The experiments were run on an NVIDIA GeForce RTX 3080\cite{nvidia-wp} with an L2 cache size of 5 MiB\@.
+The results are shown in \cref{fig:ipc_diff}, where we plotted the IPC difference relative to the kernel's normal IPC (i.e.\ non-flushed IPC).
+
+From this initial analysis, the most interesting workloads seemed to be PyTorch DCGAN\cite{dcgan} and Gunrock\cite{gru} (on road traversal), from the Cactus\cite{cactus} suite.
+Below is a full list of all analyzed workloads:
+\begin{itemize}
+    \item Gromacs\cite{gromacs} and LAMMPS\cite{LAMMPS} (with both rhodo (LMR) and colloid (LMC) inputs); two molecular simulation workloads,
+    \item Gunrock on both road (GRU) and social networks (GST),
+    \item DCGAN, neural style transform (NST)\cite{nst}, reinforcement learning (RFL), spatial transformer (SPT)\cite{spt} and language translation (LGT) from PyTorch, and
+    \item The following MLCommons benchmarks (from their MLPerf® Inference v2.0 collection):
+    \begin{itemize}
+        \item The ResNet50 model\cite{resnet50},
+        \item Both MobileNet and ResNet34 variants of the SSD model,
+        \item The Bidirectional Encoder Representations from Transformers (BERT)\cite{bert}, and
+        \item The 3D U-Net model\cite{3d-unet}
+    \end{itemize}
+    \item Four inputs to the 8x8 DCT implementation in the CUDA Samples (each labeled with their respective input).
+\end{itemize}
+\FloatBarrier
+
+While this shows that the problem does exist in hardware, it might not relate at all to how modern sampling techniques like PKA\cite{pks} and Sieve\cite{sieve}.
+These techniques use clustering select a subset of kernels to actually simulate, generalizing the results to the entire workload.
+This generalization is often based on the kernels' weights, i.e.\ how many instructions they have relative to the rest.
+When taking into account the weight of the kernels, we get a different picture altogether.
+
+\begin{figure}
+    \centering
+    \begin{minipage}[c]{0.45\textwidth}
+        \resizebox{\textwidth}{!}{\input{figures/hardware/table_mlperf_cactus}}
+    \end{minipage}
+    \begin{minipage}[c]{0.45\textwidth}
+        \resizebox{\textwidth}{!}{\input{figures/hardware/mlperf_cactus_weight.pgf}}
+    \end{minipage}
+    \caption{Weighted IPC differences}
+    \label{fig:weight_ipc_diff}
+\end{figure}
+\begin{figure}
+    \centering
+    \begin{minipage}[c]{0.45\textwidth}
+        \resizebox{\textwidth}{!}{\input{figures/hardware/table_dct_ocean}}
+    \end{minipage}
+    \begin{minipage}[c]{0.45\textwidth}
+        \resizebox{\textwidth}{!}{\input{figures/hardware/dct_ocean.pgf}}
+    \end{minipage}
+    \caption{Weighted IPC differences for different DCT inputs}
+    \label{fig:weight_ipc_dct}
+\end{figure}
+
+To generate \cref{fig:weight_ipc_diff} and \cref{fig:weight_ipc_dct}, we summed up the weights (as $\frac{\text{number of instructions in kernel}}{\text{number of instructions in workload}}$) of each kernel that has at least 5\% (resp.\ 10\%, 15\%, 20\%) of difference in IPC\ .
+This means that in the GRU benchmark, kernels constituting about 16\% of the benchmark suffer from 5\% difference in IPC or more.
+\FloatBarrier

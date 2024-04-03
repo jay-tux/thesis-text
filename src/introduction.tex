@@ -13,6 +13,6 @@ For example Principle Kernel Analysis\cite{pks}, Sieve\cite{sieve}, and Photon\c
 
 The speed-up gained from these techniques comes with a cost to accuracy, as intermediate kernels might have modified the cache state.
 This might lead to superfluous cache misses or incorrect cache hits, as loads and/or evictions might not have been performed.
-This problem is known as the cold-start problem, and has been researched with respect to the simulation of CPUs. % TODO reference?
+This problem is known as the cold-start problem, and has been researched with respect to the simulation of CPUs\cite{coolsim}.
 
 I aim to show that this problem persists when simulating GPUs, as well as show that it can be mitigated, albeit at the cost of a slightly higher simulation time.

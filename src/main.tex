@@ -6,6 +6,23 @@
 
 % Packages
 \usepackage{amsmath}
+\usepackage{pgfplots}
+\usepackage{pgf}
+\usepackage{lmodern}
+\usepackage{subcaption}
+\usepackage{lscape}
+\usepackage{hyperref}
+\usepackage{cleveref}
+\usepackage{placeins}
+
+\def\mathdefault#1{#1}
+\everymath=\expandafter{\the\everymath\displaystyle}
+\makeatletter\@ifpackageloaded{underscore}{}{\usepackage[strings]{underscore}}\makeatother
+
+\pgfplotsset{compat=1.17}
+\usetikzlibrary{arrows.meta} %define styles in graph
+
+\usepgfplotslibrary{external}
 
 \author{Jonas Sys}
 \title{Quantifying and Mitigating the Cold-Start Problem in GPU Simulation}
@@ -25,7 +42,7 @@
     \include{results}
     \include{conclusion}
 
-    \bibliographystyle{alpha}
+    \bibliographystyle{ieeetr}
     \bibliography{main}
 
 \end{document}
