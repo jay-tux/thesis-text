@@ -40,27 +40,31 @@ When taking into account the weight of the kernels, we get a different picture a
 
 \begin{figure}
     \centering
-    \begin{minipage}[c]{0.45\textwidth}
-        \resizebox{\textwidth}{!}{\input{figures/hardware/table_mlperf_cactus}}
-    \end{minipage}
-    \begin{minipage}[c]{0.45\textwidth}
-        \resizebox{\textwidth}{!}{\input{figures/hardware/mlperf_cactus_weight.pgf}}
-    \end{minipage}
-    \caption{Weighted IPC differences}
-    \label{fig:weight_ipc_diff}
-\end{figure}
-\begin{figure}
+    \begin{subfigure}{\textwidth}
+        \begin{minipage}[c]{0.45\textwidth}
+            \resizebox{\textwidth}{!}{\input{figures/hardware/table_mlperf_cactus}}
+        \end{minipage}
+        \begin{minipage}[c]{0.45\textwidth}
+            \resizebox{\textwidth}{!}{\input{figures/hardware/mlperf_cactus_weight.pgf}}
+        \end{minipage}
+        \caption{Weighted IPC differences}
+        \label{fig:weight_ipc_diff}
+    \end{subfigure}
     \centering
-    \begin{minipage}[c]{0.45\textwidth}
-        \resizebox{\textwidth}{!}{\input{figures/hardware/table_dct_ocean}}
-    \end{minipage}
-    \begin{minipage}[c]{0.45\textwidth}
-        \resizebox{\textwidth}{!}{\input{figures/hardware/dct_ocean.pgf}}
-    \end{minipage}
-    \caption{Weighted IPC differences for different DCT inputs}
-    \label{fig:weight_ipc_dct}
+    \begin{subfigure}{\textwidth}
+        \begin{minipage}[c]{0.45\textwidth}
+            \resizebox{\textwidth}{!}{\input{figures/hardware/table_dct_ocean}}
+        \end{minipage}
+        \begin{minipage}[c]{0.45\textwidth}
+            \resizebox{\textwidth}{!}{\input{figures/hardware/dct_ocean.pgf}}
+        \end{minipage}
+        \caption{Weighted IPC differences for different DCT inputs}
+        \label{fig:weight_ipc_dct}
+    \end{subfigure}
+    \caption{Weighted IPC differences}
 \end{figure}
 
 To generate \cref{fig:weight_ipc_diff} and \cref{fig:weight_ipc_dct}, we summed up the weights (as $\frac{\text{number of instructions in kernel}}{\text{number of instructions in workload}}$) of each kernel that has at least 5\% (resp.\ 10\%, 15\%, 20\%) of difference in IPC\ .
 This means that in the GRU benchmark, kernels constituting about 16\% of the benchmark suffer from 5\% difference in IPC or more.
+
 \FloatBarrier

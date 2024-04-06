@@ -1,1 +1,98 @@
 \chapter{Mitigation}\label{ch:mitigation}
+
+So far, we've talked about the cold-start problem in both hardware and simulation.
+The reason why we've looked into it, is because of how we approach simulating large workloads in GPUs.
+Instead of simulating each and every kernel, we only simulate a select subset.
+Usually, these are selected using both profiling and some form of clustering based on characteristics.
+However, since we only simulate intermittent kernels, cache state might be lost and/or incorrect; which leads to inaccuracies.
+
+Taking this all into account means that we see a few options for mitigation:
+\begin{itemize}
+    \item \textbf{Simulate preceding kernels:} this is the most naive, but also the most computationally intensive approach.
+    Simulating all instructions from one or more kernels that come right before the one we need ensures that the cache state is as close to the real state as possible, but also increases the simulation time.
+    \item \textbf{Simulate certain instructions from preceding kernels:} this option is more refined than the previous, finding a balance between computation time and accuracy.
+    Since we have the full trace of each kernel, we can select only the memory instructions from the preceding kernels, simulating those to warm up the caches artificially.
+    This is what we'll be analyzing in the rest of this section.
+    Especially when kernels contain a lot of computations, and fewer memory loads/stores, this could allow for a higher accuracy at a very low cost.
+    \item \textbf{Compute a correction factor:} logic dictates that there should be a way to compute a correction factor for the cold-start problem.
+    One way to go about this could be by basing it on a combination of the following factors:
+    \begin{itemize}
+        \item \textit{Profiler differences:} by profiling a workload twice, once with and once without flushing, one can see the impact of the cold-start problem in silicon.
+        This data might be used to improve simulation results.
+        \item \textit{Profiler cache statistics:} a detailed profiler like NVIDIA's Nsight Compute tool can provide statistics about hits and misses, which in turn could be used to compute the correction factor.
+        \item \textit{Memory footprint:} by using an instruction-level trace, it's possible to extract all memory references.
+        The ratio $\frac{\text{total memory references}}{\text{unique memory references}}$ could inform us about the cache state.
+    \end{itemize}
+\end{itemize}
+
+In this chapter, we'll focus on the second option, simulating memory instructions from preceding kernels.
+
+\FloatBarrier
+\section{Gathering trace info}\label{sec:trace-info}
+The AccelSim\cite{accelsim} tool comes with an NVBIT\cite{nvbit} tool and post-processor which are already used to generate the instruction-level traces that are eventually fed to the simulator itself.
+By default, this tool generates a number of files:
+\begin{itemize}
+    \item \verb|traces/kernelslist|: a list of all kernels that were run, with their respective kernel IDs.
+    \item \verb|traces/stats.csv|: a CSV file containing some global statistics about each kernel.
+    \item \verb|traces/kernel-<number>.trace|: the actual instruction-level trace for each kernel, identified by their numbers.
+\end{itemize}
+
+We've expanded this tool to output an additional file for each kernel: \verb|traces/kernel-mem-<number>.trace|.
+This file contains all memory instructions issued by the selected kernel, as well as the final \verb|EXIT| instruction (omitting this one would lead to a segmentation fault in the simulator).
+The original NVBIT tool reports for each instruction it instruments whether it's a memory instruction or not.
+We use that information to filter out the instructions we need.
+
+As with the original traces, we need to post-process each memory trace before feeding it to the simulator.
+By using the same format as the original tool, we ensure that the existing post-processor can also handle these new files.
+
+\FloatBarrier
+\section{Kernel selection}\label{sec:kernel-selection}
+In order to warm up the simulator's caches, we will be simulating the memory instructions from preceding kernels.
+However, this is once again a trade-off: the more kernels we use to warm up the caches, the more accurate the simulation will be, but the longer it will take.
+We've selected four kernels from the DCT8x8 workload with high IPC differences, as shown in \cref{fig:dct_kernels}.
+
+\begin{figure}
+    \centering
+    \input{figures/simulated/dct_kernels}
+    \caption{High IPC difference kernels in DCT}
+    \label{fig:dct_kernels}
+\end{figure}
+
+For each of these kernels, we used multiple simulations:
+\begin{itemize}
+    \item \textbf{Perfect warmup:} the kernel is simulated in order, with all preceding kernels simulated in full.
+    \item \textbf{Full memory warmup:} the kernel is simulated in order, with all memory instructions preceding it simulated (for kernel $i$, this means all memory instructions from kernels $1$ until $i - 1$ are simulated).
+    \item \textbf{Partial memory warmup:} the memory instructions of up to 10 preceding kernels are simulated.
+\end{itemize}
+
+\begin{figure}
+    \centering
+    \resizebox{0.45\textwidth}{!}{\input{./figures/simulated/kernel-11-abs.pgf}}
+    \resizebox{0.45\textwidth}{!}{\input{./figures/simulated/kernel-13-abs.pgf}}
+    \resizebox{0.45\textwidth}{!}{\input{./figures/simulated/kernel-114-abs.pgf}}
+    \resizebox{0.45\textwidth}{!}{\input{./figures/simulated/kernel-115-abs.pgf}}
+    \input{./figures/simulated/mitigation_absolute}
+    \caption{DCT Mitigation results (absolute IPC values)}
+    \label{fig:mitig_abs}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \resizebox{0.45\textwidth}{!}{\input{./figures/simulated/kernel-11-acc.pgf}}
+    \resizebox{0.45\textwidth}{!}{\input{./figures/simulated/kernel-13-acc.pgf}}
+    \resizebox{0.45\textwidth}{!}{\input{./figures/simulated/kernel-114-acc.pgf}}
+    \resizebox{0.45\textwidth}{!}{\input{./figures/simulated/kernel-115-acc.pgf}}
+    \input{./figures/simulated/mitigation_accuracy}
+    \caption{DCT Mitigation results (accuracy)}
+    \label{fig:mitig_acc}
+\end{figure}
+
+In \cref{fig:mitig_abs} and\ \ref{fig:mitig_acc}, we've plotted the results of these simulations.
+For each kernel, we've plotted the result of \textit{perfect warmup} as a black line, this was the golden reference we tried to reach.
+Additionally, the light-brown line represents \textit{full memory warmup}, while the blue line represents \textit{partial memory warmup}.
+Both raw IPC values and accuracy (in percents) are shown.
+
+From these figures, we can quickly deduce that even a single preceding kernel can lead to drastic accuracy increases: most kernels reach over 99\% accuracy with just one kernel warmed up.
+
+An additional striking detail is that more kernels doesn't always imply a higher accuracy.
+This might be due to some non-determinism in the simulator.

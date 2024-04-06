@@ -1,1 +1,34 @@
 \chapter{The Cold-Start Problem in AccelSim}\label{ch:sim-analysis}
+
+After an initial in-silicon analysis, we moved our focus over to the AccelSim tool.
+Due to the inherent overhead in simulating GPUs, we had to limit the number of kernels we could simulate, as well as which workloads we could focus on.
+Since the DCT and 3D-UNet workloads were promising in the hardware analysis, we decided to work with these two workloads in AccelSim.
+As before, we ran each workload twice: once with the cache flushed between kernels, and once without, using AccelSim's builtin \verb|-flush-l1 -flush-l2| arguments.
+
+\begin{figure}
+    \centering
+    \begin{minipage}[c]{0.45\textwidth}
+        \resizebox{\textwidth}{!}{\input{figures/simulated/full_dct_ocean_unet_table}}
+    \end{minipage}
+    \begin{minipage}[c]{0.45\textwidth}
+        \resizebox{\textwidth}{!}{\input{figures/simulated/full_dct_ocean_unet_sim.pgf}}
+    \end{minipage}
+    \caption{Weighted IPC differences}
+    \label{fig:sim_ipc_diff}
+\end{figure}
+
+The results of this analysis are shown in \cref{fig:sim_ipc_diff}.
+An additional workload we included was the OceanFFT one, from the CUDA SDK\ .
+
+The first thing that really stands out is the difference between the simulator and real hardware.
+In the hardware analysis, over 50\% of the DCT workload suffered from 20\% or more difference in IPC, while this barely shows in the simulator.
+
+The OceanFFT workload is a bit of an outlier.
+As you can see in \cref{fig:ocean_kernels}, there is one kernel that really suffers from the cold-start problem, while the other four do not.
+
+\begin{figure}
+    \centering
+    \input{figures/simulated/ocean_kernels}
+    \caption{OceanFFT kernels}
+    \label{fig:ocean_kernels}
+\end{figure}
