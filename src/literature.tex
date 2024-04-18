@@ -1,1 +1,225 @@
 \chapter{Literature Review}\label{ch:literature-review}
+The topic of GPU simulation has been studied extensively, albeit not as extensively as CPU simulation.
+Before continuing with the cold-start problem, we'll shortly discuss the current state of GPU simulation.
+The three main papers this thesis is based on are \textit{AccelSim}\cite{accelsim}, \textit{Principal Kernel Analysis}\cite{pks}, and \textit{Sieve}\cite{sieve}.
+The first of these provides the simulator we use, while the latter two provide the kernel sampling techniques that are commonly used to speed up simulation.
+
+\section{GPU Simulation}\label{sec:gpu-simulation}
+As outlined in the AccelSim paper\ \cite{accelsim}, most of the ISA and architecture changes in GPU innovation are usually closed off by the industry.
+This makes it harder for research to keep up with industry changes.
+
+The proposed simulator AccelSim, which is based on the older GPGPU-Sim simulator\cite{gpgpu-sim}.
+It consists of four main components:
+\begin{enumerate}
+    \item The flexible frontend;
+    \item A very flexible and detailed performance model;
+    \item A correlation generation tool, which can be used to expand the simulator to newer GPU architectures; and
+    \item A configuration tuner based on micro-benchmarks, which uses the correlation generation tool to tune the simulator.
+\end{enumerate}
+
+
+\subsection{AccelSim Frontend}\label{subsec:accelsim-frontend}
+An important improvement which AccelSim brings, is the very flexible frontend.
+The existing GPGPU-Sim is largely limited to virtual ISA (vISA) execution-driven simulation, using PTX (parallel thread execution) instructions.
+AccelSim improves upon this by adding support for trace-driven machine ISA (mISA) simulation, which uses the actual SASS (source and assembly) code.
+
+In trace-driven mode, the simulator reads the mISA trace and converts it into the internal ISA-independent representation.
+This representation has a one-to-one correspondence with SASS instructions, where the active mask and memory addresses are embedded in the trace itself.
+Conversely, the execution-driven mode requires the computation of the active mask and memory addresses at runtime, which is done by emulation of the PTX code.
+Finally, another benefit of the mISA is that it includes the actual register allocation, while the vISA assumes an infinite amount of registers.
+
+\subsection{AccelSim Performance Model}\label{subsec:accelsim-performance-model}
+AccelSim's performance model attempts to mimic actual GPU hardware as closely as possible.
+To this end, it is structured in a number of streaming multiprocessors (SMs), each of which is composed of a number of warp schedulers.
+Each of these schedulers has an associated register file and is in turn composed of a number of execution units.
+
+The combination of a warp scheduler with its register file and execution units is called a sub-core.
+These only share an instruction cache and memory subsystem.
+\\
+\\
+As with the frontend, the performance model is also very flexible.
+It can simulate either a unified or split L1 Data cache (L1D), as the device driver can configure the cache at runtime.
+In many modern workloads, an adaptive cache is used.
+This means that if a kernel does not use shared memory, all on-chip storage is used for the L1D cache.
+Additionally, this flexible cache model supports multiple cache designs: throughput-oriented, banked, and sectored; which allows for high-accuracy simulation.
+
+Importantly, the simulator also needs to model the CPU-to-GPU memory copy engine.
+Each DRAM access has to pass through the L2 cache, changing cache state.
+
+Finally, the performance model also includes support for domain-specific process pipelines.
+Extending the simulator with these pipelines (e.g.\ Tensor Cores) requires the addition of some config files.
+However, if the user wishes to also support the PTX simulation of these pipelines, they will need to add emulation code in the GPGPU-Sim implementation.
+
+\subsection{Extension and Verification}\label{subsec:extension-and-verification}
+The final two components, the correlation generation tool and the configuration tuner, are not only used to extend the simulator to newer architectures, but also to verify the simulator's accuracy.
+
+Firstly, the tuner uses micro-benchmarks to tune the simulator; each of these micro-benchmarks can be used to discover non-public configuration parameters, including:
+\begin{itemize}
+    \item It can pinpoint changes in memory latency and bandwidth (both for L1 cache, L2 cache and shared memory);
+    \item It can detect the cache write policy and its configuration (associativity, line size, etc.).
+\end{itemize}
+
+After running these micro-benchmarks, the tuner reads the results and provides a configuration file which can be fed to the performance model.
+Some parameters can't be determined by the benchmarks themselves, like warp scheduling policy, memory scheduling, and some L2 cache parameters (interleaving and hash function).
+To determine these, the tuner will attempt to simulate each possible combination on a set of memory bandwidth micro-benchmarks.
+The configuration with the highest average hardware correlation is then picked to be the correct one.
+\\
+\\
+The other component, the correlation generation tool, can be used to generate targeted information on inaccuracies.
+This information is important because the tuner might not be able to detect and/or capture drastic architectural changes.
+These changes often require manual intervention.
+
+\subsection{AccelSim Conclusion}\label{subsec:accelsim-conclusion}
+AccelSim is a very flexible and detailed simulator, which can be used to simulate both vISA and mISA code.
+It is also able to simulate a wide range of cache designs, and can be extended to support domain-specific pipelines.
+The correlation generation tool and configuration tuner are used to verify the simulator's accuracy, and to extend it to newer architectures.
+
+The current version can simulate up to a speed of 122\thinspace500 warp instructions per second, which still improves upon the previous GPGPU-Sim version.
+Half of this speedup comes from the trace-driven mode, which avoids overhead of functional execution.
+The user can also set kernel-based checkpoints to avoid simulation of non-interesting regions.
+
+The other half of the speedup comes from a simulation optimization strategy called \textit{simulation-gating}, which provides a tradeoff between event-driven and cycle-driven simulation.
+During simulation, it's quite often the case to have thousands of in-flight memory requests from hundreds of active threads.
+This means that each cycle, there is always something to simulate.
+However, ticking every component every cycle can be expensive, especially if there are quite a few empty components (e.g.\ cores, execution units, caches, and DRAM channels).
+To avoid this, the simulator only ticks the active components.
+
+\section{Kernel Sampling}\label{sec:kernel-sampling}
+Simulation has a lot of benefits; like the inherently configurable design, the flexibility, and the ability to reconfigure hardware to analyze model changes, but it also has the downside of its inherent enormous overhead.
+The authors of the PKA paper\cite{pks} show that workloads which would take mere seconds on real hardware, could take upwards of a century on a simulator.
+This drawback means that each simulation platform must limit the number of instructions.
+
+Many approaches attempt to restrict the workload and/or platform to speed up simulation.
+To this end, workloads could be scaled down; which would limit the applicability to extremely short runtimes.
+Another option would be to simulate only the first few billion instructions of a larger, scaled workload.
+However, this option limits the horizon of the simulation, often only simulating the warmup-phase of the program.
+A third option would be to scale the GPU itself down, but this would force the workload to adapt to the scaled-down hardware.
+Finally, neither of these options have really been validated against scaled workloads.
+
+To come up with a better solution, the authors turned their attention to the solutions employed when simulating CPUs.
+For CPU workloads, the simulation often focuses on selecting a subset of the basic blocks in each thread.
+However, this does not translate well to GPU simulation, as the control-flow graphs (CFGs) each GPU thread executes are usually small and trivial compared to CPU CFGs.
+To really make a difference in simulation time, you'd need to curtail the number of threads, rather than the number of basic blocks per thread.
+
+\subsection{Principal Kernel Analysis}\label{subsec:principle-kernel-analysis}
+To select a subset of the kernels to simulate (and thus limit the number of threads), the authors propose a new technique called Principal Kernel Analysis (PKA).
+This technique is based on the following three observations:
+\begin{itemize}
+    \item Even though a workload can contain many kernel instances, all of them can be characterized and grouped based on a small number of architecture-independent metrics.
+    \item Heavy-duty detailed profiling of an entire workload can very easily take an extreme amount of time.
+    To combat this, we can do the full profiling on a subset of kernels, and use lightweight profiling on the rest.
+    Finally, statistical techniques can be used to generalize the results from the subset to the entire workload, allowing us to cluster all kernels without spending too much time on profiling.
+    \item During the lifetime of a kernel, its IPC tends to stabilize to a value representative for the entire kernel.
+    This allows us to cut the execution short, and still get a good estimate of the kernel's final performance values.
+\end{itemize}
+
+The PKA technique has two big steps: firstly \textit{Principal Kernel Selection} (PKS), and secondly \textit{Principal Kernel Projection} (PKP).
+During this first step, a workload is profiled, after which all profiling results (both heavy-duty and lightweight) are used to cluster all kernel invocations.
+From each cluster, a representative kernel is selected to be simulated.
+The second step, PKP, then uses the third observation above to stop the simulation once the deviation in IPC is below a certain threshold.
+This clear approach gives PKA its four main characteristics:
+\begin{itemize}
+    \item \textbf{Scalable:} the two-level profiling assures that a reasonable amount of time is spent on pre-processing, after which the selection algorithm can choose which kernels to simulate.
+    By simulating a limited number of kernels, the simulation time is drastically reduced.
+    \item \textbf{Automatic:} PKA requires only very few inputs: profiling results (which can be directly obtained from the workload itself); a maximum error bound for the PKS step; and finally, a confidence interval for the PKP step.
+    \item \textbf{Tunable:} the parameters outlined in the previous point allow the user to tune the tradeoff between simulation time and accuracy.
+    \item \textbf{Verification:} PKA has been verified against silicon, which is not true for some other sampling techniques.
+\end{itemize}
+
+\subsection{Principal Kernel Selection}\label{subsec:pks}
+During the profiling phase, all metrics gathered are micro-architecture-independent.
+This means that they depend only on the workload, not the GPU being profiled.
+By making sure that the metrics are independent, we can avoid discrepancies (similar to the differences between x86 instructions and micro-ops when simlating CPUs).
+The metrics used are:
+\\
+\\
+\newcommand{\tabitem}{~~\textbullet~~}
+\begin{tabular}{p{0.45\textwidth}p{0.45\textwidth}}
+    \tabitem Coalesced global loads and stores & \tabitem Thread global atomics \\
+    \tabitem Coalesced local loads             & \tabitem Instruction count     \\
+    \tabitem Thread global loads and stores    & \tabitem Divergence efficiency \\
+    \tabitem Thread local loads                & \tabitem Thread block count    \\
+    \tabitem Thread shared loads and stores
+\end{tabular}
+\\
+\\
+After gathering results from the heavy-duty profiler (if needed, for only a limited number of kernels), principal component analysis (PCA) is used to reduce the dimensionality of the data.
+This makes sure that we can avoid the curse of dimensionality, as the principal dimensions will have the highest variability.
+Once we have the smaller dataset, we use k-means to cluster the data.
+The k-means algorithm was chosen partially because of explain-ability, and partially because it can be tuned with its factor $k$.
+
+From each of the obtained clusters, a representative kernel invocation is selected.
+The authors have tried three different methods of selection: random, first chronologically, and closest to cluster center.
+The first option, random, caused inconsistent error rates, and is not recommended.
+The other two options, however, showed negligible differences in error rates.
+In this case, the first chronologically was picked, as this has certain benefits in practice (for both tracing and profiling).
+
+If the workload is very large, it can be impractical to use heavy-duty profiling on all kernels.
+In this case, we can use a two-level approach: profiling the first $j$ kernels using the heavy-duty profiler, while from the other $n - j$ kernels only a subset of the metrics is gathered.
+We cluster the fully profiled kernels using the PCA and k-means approach, while the others are mapped to the clusters using either \textit{Stochastic Gradient Descent}, \textit{Naive Bayes Gaussian}, or \textit{Multi-layer Perceptron}.
+
+\subsection{Principal Kernel Projection}\label{subsec:pkp}
+While PKA solves the problem of the number of kernels, it does not address long-running ones.
+To this end, the authors propose the Principal Kernel Projection (PKP).
+PKP is based on the observation that, since each thread in the grid runs the same code, the code of a kernel usually has only a few phases (largely due to their lifetime being shorter than a CPU thread).
+This means that the IPC of a kernel usually stabilizes, even in very irregular applications (like graph processing).
+
+PKP attempts to detect this stabilization by tracking two statistics about the IPC across the last $n$ cycles: the rolling average, and the deviation.
+One of the parameters to the PKA application is the confidence interval for stabilization detection.
+From this parameter, a threshold value $s$ is computed.
+When the deviation drops below this threshold, the IPC is considered quasi-stable, and the simulation can be stopped.
+A smaller value for $s$ leads to higher accuracy at the cost of a longer simulation time.
+According to the authors, a value of $s = 0.25$ should be fine.
+
+\section{Improving PKA}\label{sec:improving-pka-sieve}
+While PKA is a very powerful technique, leading to drastically lower simulation times while still maintaining a high accuracy for most application, it isn't perfect yet.
+The main issues with PKA, as outlined in the Sieve paper\cite{sieve}, are:
+\begin{itemize}
+    \item Since the PKS phase assumes the same execution time for all invocations in a cluster, there is a very large variability in cycle count.
+    \item The heavy-duty profiling phase is very time-consuming.
+    Using only the instruction count (which can be obtained from the lightweight profiler) also leads to a high accuracy.
+    \item PKS also relies on a golden reference obtained from real hardware to select its representative kernels.
+    This implies that the final clustering is not micro-architecture-independent, since the hardware platform ultimately decides the clustering.
+    Sieve only uses the instruction count to cluster the kernels, so the actual clusters and representatives will be micro-architecture independent.
+\end{itemize}
+
+The Sieve technique improves upon both steps of the PKS phase.
+Firstly, it only requires a few easily-gathered metrics from the application to cluster the kernels.
+These metrics (kernel name, invocation ID, and number of dynamically executed instructions) can be obtained from the lightweight profiler, which reduces profiling time.
+This is a much lower one-time cost than PKA requires, opening up many more applications that were prohibitively expensive to profile using PKA\ .
+
+\subsection{Strata}\label{subsec:strata}
+Secondly, Sieve uses strata-based clustering to reduce variability and select a better representative kernel.
+Within each stratum, only instances (or invocations) of the same kernel are present, while also keeping the amount of dynamically executed instructions as similar as possible.
+The strata are organized in three tiers:
+\begin{enumerate}
+    \item \textbf{Tier 1:} all instances in tier 1 have the exact same number of dynamic instructions; removing all variability.
+    \item \textbf{Tier 2:} only a small amount of variability is allowed in tier 2, with a configurable maximum.
+    \item \textbf{Tier 3:} the remaining instances are placed in tier 3, where the variability is allowed to be much larger.
+\end{enumerate}
+In order to determine to which tier a kernel invocation belongs, the Coefficient of Variation $CoV = \frac{\sigma}{\mu}$ (the ratio between standard deviation and mean instruction count) is used.
+A threshold $\theta$ can be set by the user; where a lower $\theta$ implies less variability within the strata and higher accuracy at the cost of a longer simulation time.
+The authors found that $\theta = 0.4$ is a good compromise.
+
+To improve the variability of tier 3, which allows for a lot of variability, Kernel Density Estimation (KDE) is used.
+This allows to minimize the number of strata while also limiting the variability in instruction count (using the same threshold $\theta$).
+
+Using this methodology, the authors found that Sieve was able to fit most kernel invocations from the MLPerf\cite{mlperf} and Cactus\cite{cactus} workloads into tiers 1 and 2.
+
+\subsection{Selection}\label{subsec:selection}
+When selecting a representative kernel, Sieve makes a decision based on the tier of the stratum:
+\begin{enumerate}
+    \item \textbf{Tier 1:} in tier 1, all kernel invocations are identical, so the first chronologically is picked.
+    \item \textbf{Tiers 2 and 3:} in these tiers, the first chronological kernel with the most dominant cooperative thread array (CTA) is selected.
+    Using the CTA as a metric makes sure that the selected kernel invocation occupies the hardware resources in the most representative way.
+\end{enumerate}
+Additionally, a weight for each stratum is computed as $w_i = \frac{\text{total instruction count of stratum }i}{\text{total instruction count of workload}}$.
+This ensures that each stratum is weighted according to its actual weight in the workload.
+
+\subsection{Performance Prediction}\label{subsec:pref-pred}
+The final step in the Sieve technique is the performance prediction.
+After simulating the representative kernels and obtaining their performance numbers (e.g.\ IPC), these can be generalized per stratum.
+Computing or predicting the final IPC for the application is done by taking the weighted harmonic mean of the IPC values from each stratum:
+\begin{align*}
+    IPC = \frac{1}{\sum_{\text{stratum/cluster } i}{\frac{w_i}{IPC_i}}}
+\end{align*}

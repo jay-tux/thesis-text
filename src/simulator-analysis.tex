@@ -5,7 +5,7 @@ Due to the inherent overhead in simulating GPUs, we had to limit the number of k
 Since the DCT and 3D-UNet workloads were promising in the hardware analysis, we decided to work with these two workloads in AccelSim.
 As before, we ran each workload twice: once with the cache flushed between kernels, and once without, using AccelSim's builtin \verb|-flush-l1 -flush-l2| arguments.
 
-\begin{figure}
+\begin{figure}[t]
     \centering
     \begin{minipage}[c]{0.45\textwidth}
         \resizebox{\textwidth}{!}{\input{figures/simulated/full_dct_ocean_unet_table}}
@@ -26,7 +26,7 @@ In the hardware analysis, over 50\% of the DCT workload suffered from 20\% or mo
 The OceanFFT workload is a bit of an outlier.
 As you can see in \cref{fig:ocean_kernels}, there is one kernel that really suffers from the cold-start problem, while the other four do not.
 
-\begin{figure}
+\begin{figure}[b]
     \centering
     \input{figures/simulated/ocean_kernels}
     \caption{OceanFFT kernels}
