@@ -1,9 +1,18 @@
 \chapter{The Cold-Start Problem in Hardware}\label{ch:hw-analysis}
 
-Initially, we analyzed some workloads and benchmarks to gather some data on the impact of the cold-start problem in real hardware.
-To this end, we used the NVIDIA Nsight Compute tool, running up to 20000 kernels for each workload.
-Each workload was profiled twice, once as it would normally run, and once where all GPU caches were flushed between kernel invocations.
-After profiling, we computed the IPC values for each kernel, and determined the impact of flushing the cache, i.e., the cold-start problem for that kernel.
+\section{Initial profiling}\label{sec:initial-profiling}
+Firstly, we need to quantify and detect whether the cold-start problem exists in GPGPU hardware.
+To this end, we've analyzed some workloads and benchmarks using the NVIDIA Nsight Compute tool.
+This tool allows us to control the caches during the execution of an application.
+Additionally, we can gather detailed metrics, like IPC, for each kernel in the workload.
+
+Each workload was profiled twice: once like it would run normally, and once with the caches flushed between kernel invocations.
+Nsight Compute supports this option by using the \verb|--cache-control=all| argument.
+To keep the runtime in check, we limited the execution to 20\thinspace000 kernels per workload.
+These experiments were run on an NVIDIA GeForce RTX 3080\cite{nvidia-wp}, which has an L2 cache size of 5 MiB\@.
+
+After profiling, we attempted to match each profiled non-flushed kernel with its flushed counterpart.
+This proved easier said than done, as the kernel IDs were not consistent between the two profiles.
 
 \begin{figure}
     \centering
@@ -12,9 +21,6 @@ After profiling, we computed the IPC values for each kernel, and determined the 
     \caption{Relative IPC difference}
     \label{fig:ipc_diff}
 \end{figure}
-
-The experiments were run on an NVIDIA GeForce RTX 3080\cite{nvidia-wp} with an L2 cache size of 5 MiB\@.
-The results are shown in \cref{fig:ipc_diff}, where we plotted the IPC difference relative to the kernel's normal IPC (i.e.\ non-flushed IPC).
 
 From this initial analysis, the most interesting workloads seemed to be PyTorch DCGAN\cite{dcgan} and Gunrock\cite{gru} (on road traversal), from the Cactus\cite{cactus} suite.
 Below is a full list of all analyzed workloads:
@@ -31,12 +37,23 @@ Below is a full list of all analyzed workloads:
     \end{itemize}
     \item Four inputs to the 8x8 DCT implementation in the CUDA Samples (each labeled with their respective input).
 \end{itemize}
+
+In \cref{fig:ipc_diff}, you can see the relative IPC difference for each kernel in the Cactus and MLPerf workloads.
+For the majority of workloads, the IPC difference is rather small (at most 10\%).
+However, for some of the more interesting workloads (like DCG, GRU, NST, and DCT), we can find IPC differences of up to 70\% for some kernels.
 \FloatBarrier
 
-While this shows that the problem does exist in hardware, it might not relate at all to how modern sampling techniques like PKA\cite{pks} and Sieve\cite{sieve}.
-These techniques use clustering select a subset of kernels to actually simulate, generalizing the results to the entire workload.
-This generalization is often based on the kernels' weights, i.e.\ how many instructions they have relative to the rest.
-When taking into account the weight of the kernels, we get a different picture altogether.
+\section{Weighting kernels}\label{sec:weighting-kernels}
+While this shows that the problem does exist in hardware, it might not relate to how modern simulation is carried out.
+Modern techniques like Sieve\cite{sieve} use clustering to select a subset of kernels to simulate, generalizing the results to the entire workload.
+In these sampling techniques, many kernels are clustered together based on characteristics.
+The process then selects a single kernel from each cluster to simulate, using those results are representative for the entire cluster.
+To combine the clusters and compute a final result, each cluster's result is weighted by its instruction count, relative to the full workload:
+\begin{align*}
+    w_{kernel} &= \frac{\text{kernel instruction count}}{\sum_{\text{kernel } k \in \text{ workload}}{\text{kernel}_k \text{ instruction count}}} \\
+    w_{cluster} &= \sum_{\text{kernel } k \in \text{ cluster}} w_{kernel}
+\end{align*}
+In order to get a better view of the impact of the cold start problem, we've also computed IPC difference when each kernel is weighted by its instruction count.
 
 \begin{figure}[t]
     \centering
@@ -64,7 +81,43 @@ When taking into account the weight of the kernels, we get a different picture a
     \caption{Weighted IPC differences}
 \end{figure}
 
-To generate \cref{fig:weight_ipc_diff} and \cref{fig:weight_ipc_dct}, we summed up the weights (as $\frac{\text{number of instructions in kernel}}{\text{number of instructions in workload}}$) of each kernel that has at least 5\% (resp.\ 10\%, 15\%, 20\%) of difference in IPC\ .
-This means that in the GRU benchmark, kernels constituting about 16\% of the benchmark suffer from 5\% difference in IPC or more.
+In \cref{fig:weight_ipc_diff}, you can see the result of this analysis for the Cactus and MLPerf workloads.
+The results for the DCT workload (with its same four input images) is shown in \cref{fig:weight_ipc_dct}.
+We've set four thresholds for the relative IPC difference (5\%, 10\%, 15\%, and 20\%).
+For each of these thresholds, we've summed up the weights of all kernels where the IPC difference is at least that much.
+This means that e.g.\ for the GRU workload, approximately 16\% of the entire workload suffers from a difference of at least 5\%.
+
+From these figures, we end up with a different set of affected workloads.
+Most of the MLPerf workloads only suffer slightly from the cold-start problem, with the only notable exception being the 3D U-Net workload.
+In the Cactus suite, we found language translation (LGT), spatial transformer (SPT), reinforcement learning (RFL), and Gunrock (with road input, GRU) to be the most affected.
+The real outlier here, however, is the DCT one.
+It consistently suffers from at least 20\% relative IPC difference, no matter the input.
 
 \FloatBarrier
+
+\section{Data reuse}\label{sec:data-reuse}
+We assume that the cold-start problem is more prevalent in workloads with high data reuse.
+To verify this, we've analyzed the degree of inter-kernel data reuse in the DCT workload.
+For each kernel, we've profiled all memory instructions and extracted the unique memory addresses.
+We've computed the ratio $\frac{|\text{footprint } k_i \cap \text{footprint } k_{i-1}|}{|\text{footprint } k_i|}$ for each kernel $k_i, i \geq 2$.
+
+\begin{figure}
+    \centering
+    \resizebox{0.45\textwidth}{!}{\input{./figures/hardware/dct_reuse.pgf}}
+    \caption{Inter-kernel data reuse in DCT}
+    \label{fig:dct_reuse}
+\end{figure}
+
+As you can see in \cref{fig:dct_reuse}, the data reuse ratio is rather high for the DCT workload.
+For most kernels, all memory references can be found in the previous kernel's footprint.
+However, this does not mean that the cold-start problem is the only factor at play here: memory references might be lost due to cache evictions.
+
+\FloatBarrier
+\section{Hardware conclusion}\label{sec:hw-conclusion}
+From this, we can conclude that the cold-start problem does exist in hardware.
+Additionally, we noticed that the problem changes severity when we take each relative kernel's instruction count into account, giving us other workloads to focus on.
+Finally, we suspected that workloads with high inter-kernel data reuse would suffer more from the cold-start problem.
+This was confirmed by the DCT workload, as we've shown in \cref{fig:dct_reuse}.
+
+In the next chapter, we'll be analyzing the impact of the cold-start problem in the AccelSim simulator.
+We'll mostly use the DCT and 3D U-Net workloads for this, as well as the OceanFFT one.
