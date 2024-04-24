@@ -1,12 +1,12 @@
-  \begin{tabular}{|c|c|c|}
+  \begin{tabular}{|c|c|c|c|}
     \hline
-    \textbf{Kernel Name} & \textbf{IPC Difference} & \textbf{weight} \\
+    \textbf{Kernel Name} & \textbf{IPC Difference} & \textbf{Weight} & \textbf{Data Reuse (\%)} \\
     \hline
     \hline 
-    \verb|generateSpectrumKernel| & 0.28\% & 44.43\% \\
-    \verb|regular_fft| & \textit{31.40\%} & \textit{21.69\%} \\
-    \verb|vector_fft| & 0.45\% & 17.81\% \\
-    \verb|updateHeightmapKernel| & 0.01\% & 6.00\% \\ 
-    \verb|calculateSlopeKernel| & 0.00\% & 10.08\% \\
+    \verb|generateSpectrumKernel| & 0.28\% & 44.43\% & n/a \\
+    \verb|regular_fft| & \textit{31.40\%} & \textit{21.69\%} & \textit{25.00\%} \\
+    \verb|vector_fft| & 0.45\% & 17.81\% & 25.00\% \\
+    \verb|updateHeightmapKernel| & 0.01\% & 6.00\% & 0.00 \% \\ 
+    \verb|calculateSlopeKernel| & 0.00\% & 10.08\% & 18.18\% \\
     \hline 
   \end{tabular}

@@ -1,11 +1,19 @@
 \chapter{The Cold-Start Problem in AccelSim}\label{ch:sim-analysis}
 
-After an initial in-silicon analysis, we moved our focus over to the AccelSim tool.
-Due to the inherent overhead in simulating GPUs, we had to limit the number of kernels we could simulate, as well as which workloads we could focus on.
-Since the DCT and 3D-UNet workloads were promising in the hardware analysis, we decided to work with these two workloads in AccelSim.
-As before, we ran each workload twice: once with the cache flushed between kernels, and once without, using AccelSim's builtin \verb|-flush-l1 -flush-l2| arguments.
+\section{Simulation results}\label{sec:simulation-results}
+The initial in-silicon analysis proved that the cold-start problem is, in fact, present in GPGPU hardware.
+In this chapter, we'll show that the impact of this problem persists in the AccelSim simulator.
+However, one of the first things we've noticed is that the simulator is affected much differently from the real hardware.
 
-\begin{figure}[t]
+Due to the inherent overhead in simulating GPUs, we had to limit the number of kernels we could simulate, as well as which workloads we could focus on.
+The DCT and 3D U-Net workloads were selected for this analysis, as they showed promising results in the hardware analysis.
+Following our discussion about inter-kernel data reuse, we also included the OceanFFT workload (from the CUDA SDK) in this analysis.
+
+We set up AccelSim to use the existing, tested configurations for the NVIDIA GeForce RTX 3070 hardware (SM 86). % TODO: add cache size?
+Again, each workload was run twice: once with the cache flushed between kernel invocations, and once without.
+AccelSim natively supports flushing caches using the \verb|-flush-l1 -flush-l2| arguments.
+
+\begin{figure}[ht]
     \centering
     \begin{minipage}[c]{0.45\textwidth}
         \resizebox{\textwidth}{!}{\input{figures/simulated/full_dct_ocean_unet_table}}
@@ -17,18 +25,32 @@ As before, we ran each workload twice: once with the cache flushed between kerne
     \label{fig:sim_ipc_diff}
 \end{figure}
 
-The results of this analysis are shown in \cref{fig:sim_ipc_diff}.
-An additional workload we included was the OceanFFT one, from the CUDA SDK\ .
+\FloatBarrier
+\subsection{OceanFFT}\label{subsec:oceanfft}
 
-The first thing that really stands out is the difference between the simulator and real hardware.
-In the hardware analysis, over 50\% of the DCT workload suffered from 20\% or more difference in IPC, while this barely shows in the simulator.
+The graphs in \cref{fig:sim_ipc_diff} show the results of this analysis.
+They follow the same structure as \cref{fig:weight_ipc_diff} from the hardware analysis: showing weighted IPC differences for each workload.
+The first thing we noticed is that the simulator results are very different from the hardware results.
+Where 3D U-Net had kernels with a relative IPC difference of over 15\% in hardware, the differences in the simulator cap out around 5\%.
+For DCT we notice a similar trend: the simulator results are much lower than the hardware results.
+Where the hardware results showed that more than 50\% of the workload suffered from at least 20\% in IPC difference, the simulator results give a maximum of 15\% (worth less than 1\% of the workload).
 
-The OceanFFT workload is a bit of an outlier.
-As you can see in \cref{fig:ocean_kernels}, there is one kernel that really suffers from the cold-start problem, while the other four do not.
+In this figure, the OceanFFT workload really stands out, compared to the other workloads.
+When looking into the structure of the OceanFFT workload, we noticed that it consists of only five kernels, of which one (kernel \#2) is significantly affected by the cold-start problem.
+The other four kernels (kernel \#1, \#3, \#4, and \#5) are not affected by the cold-start problem at all (all of them suffering less than 0.5\% relative IPC difference), as you can see in \cref{fig:ocean_kernels}.
 
-\begin{figure}[b]
+\begin{figure}[ht]
     \centering
-    \input{figures/simulated/ocean_kernels}
+    \resizebox{0.45\textwidth}{!}{\input{figures/simulated/ocean_kernels}}
     \caption{OceanFFT kernels}
     \label{fig:ocean_kernels}
 \end{figure}
+
+\FloatBarrier
+\section{Simulator conclusion}\label{sec:simulator-conclusion}
+Once again, we see that the cold-start problem persists.
+However, it is much less severe in the simulator.
+
+In the next chapter, we'll go looking for a mitigation, limiting the impact of the cold-start problem.
+We'll mostly analyze the DCT workload, due to its short runtime and thus reasonable runtime.
+The OceanFFT will prove to not be very promising, having the ``problematic'' kernel as second kernel chronologically.
