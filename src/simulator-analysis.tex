@@ -9,9 +9,17 @@ Due to the inherent overhead in simulating GPUs, we had to limit the number of k
 The DCT and 3D U-Net workloads were selected for this analysis, as they showed promising results in the hardware analysis.
 Following our discussion about inter-kernel data reuse, we also included the OceanFFT workload (from the CUDA SDK) in this analysis.
 
-We set up AccelSim to use the existing, tested configurations for the NVIDIA GeForce RTX 3070 hardware (SM 86). % TODO: add cache size?
+We set up AccelSim to use the existing, tested configurations for the NVIDIA GeForce RTX 3070 hardware (SM 86).
+The basic configuration parameters are shown in \cref{fig:sim_config}.
 Again, each workload was run twice: once with the cache flushed between kernel invocations, and once without.
 AccelSim natively supports flushing caches using the \verb|-flush-l1 -flush-l2| arguments.
+
+\begin{figure}[ht]
+    \centering
+    \input{figures/simulated/gpu_config}
+    \caption{Simulator configuration parameters}
+    \label{fig:sim_config}
+\end{figure}
 
 \begin{figure}[ht]
     \centering
@@ -25,9 +33,6 @@ AccelSim natively supports flushing caches using the \verb|-flush-l1 -flush-l2| 
     \label{fig:sim_ipc_diff}
 \end{figure}
 
-\FloatBarrier
-\subsection{OceanFFT}\label{subsec:oceanfft}
-
 The graphs in \cref{fig:sim_ipc_diff} show the results of this analysis.
 They follow the same structure as \cref{fig:weight_ipc_diff} from the hardware analysis: showing weighted IPC differences for each workload.
 The first thing we noticed is that the simulator results are very different from the hardware results.
@@ -35,13 +40,14 @@ Where 3D U-Net had kernels with a relative IPC difference of over 15\% in hardwa
 For DCT we notice a similar trend: the simulator results are much lower than the hardware results.
 Where the hardware results showed that more than 50\% of the workload suffered from at least 20\% in IPC difference, the simulator results give a maximum of 15\% (worth less than 1\% of the workload).
 
+\subsection{OceanFFT}\label{subsec:oceanfft}
 In this figure, the OceanFFT workload really stands out, compared to the other workloads.
 When looking into the structure of the OceanFFT workload, we noticed that it consists of only five kernels, of which one (kernel \#2) is significantly affected by the cold-start problem.
 The other four kernels (kernel \#1, \#3, \#4, and \#5) are not affected by the cold-start problem at all (all of them suffering less than 0.5\% relative IPC difference), as you can see in \cref{fig:ocean_kernels}.
 
 \begin{figure}[ht]
     \centering
-    \resizebox{0.45\textwidth}{!}{\input{figures/simulated/ocean_kernels}}
+    \resizebox{0.66\textwidth}{!}{\input{figures/simulated/ocean_kernels}}
     \caption{OceanFFT kernels}
     \label{fig:ocean_kernels}
 \end{figure}

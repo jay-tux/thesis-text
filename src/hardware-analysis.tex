@@ -9,7 +9,8 @@ Additionally, we can gather detailed metrics, like IPC, for each kernel in the w
 Each workload was profiled twice: once like it would run normally, and once with the caches flushed between kernel invocations.
 Nsight Compute supports this option by using the \verb|--cache-control=all| argument.
 To keep the runtime in check, we limited the execution to 20\thinspace000 kernels per workload.
-These experiments were run on an NVIDIA GeForce RTX 3080\cite{nvidia-wp}, which has an L2 cache size of 5 MiB\@.
+These experiments were run on an NVIDIA GeForce RTX 3080\cite{nvidia-wp}.
+This GPU has 68 SM cores, 6 MB of L2 cache.
 
 After profiling, we attempted to match each profiled non-flushed kernel with its flushed counterpart.
 This proved easier said than done, as the kernel IDs were not consistent between the two profiles.
@@ -99,18 +100,60 @@ It consistently suffers from at least 20\% relative IPC difference, no matter th
 We assume that the cold-start problem is more prevalent in workloads with high data reuse.
 To verify this, we've analyzed the degree of inter-kernel data reuse in the DCT workload.
 For each kernel, we've profiled all memory instructions and extracted the unique memory addresses.
-We've computed the ratio $\frac{|\text{footprint } k_i \cap \text{footprint } k_{i-1}|}{|\text{footprint } k_i|}$ for each kernel $k_i, i \geq 2$.
 
-\begin{figure}
+\begin{figure}[ht]
     \centering
-    \resizebox{0.45\textwidth}{!}{\input{./figures/hardware/dct_reuse.pgf}}
+    \begin{subfigure}{0.4\textwidth}
+        \resizebox{\textwidth}{!}{\input{./figures/hardware/dct_forward_reuse.pgf}}
+        \caption{Forward data reuse}
+        \label{fig:dct_forward_reuse}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \resizebox{\textwidth}{!}{\input{./figures/hardware/dct_backward_reuse.pgf}}
+        \caption{Backward data reuse}
+        \label{fig:dct_backward_reuse}
+    \end{subfigure}
     \caption{Inter-kernel data reuse in DCT}
     \label{fig:dct_reuse}
 \end{figure}
 
-As you can see in \cref{fig:dct_reuse}, the data reuse ratio is rather high for the DCT workload.
-For most kernels, all memory references can be found in the previous kernel's footprint.
-However, this does not mean that the cold-start problem is the only factor at play here: memory references might be lost due to cache evictions.
+\begin{figure}[ht]
+    \centering
+    \begin{subfigure}{0.4\textwidth}
+        \resizebox{\textwidth}{!}{\input{./figures/hardware/recg_forward_reuse.pgf}}
+        \caption{Forward data reuse}
+        \label{fig:recg_forward_reuse}
+    \end{subfigure}
+    \begin{subfigure}{0.4\textwidth}
+        \resizebox{\textwidth}{!}{\input{./figures/hardware/recg_backward_reuse.pgf}}
+        \caption{Backward data reuse}
+        \label{fig:recg_backward_reuse}
+    \end{subfigure}
+    \caption{Inter-kernel data reuse in recursiveGaussian}
+    \label{fig:recg_reuse}
+\end{figure}
+
+In \cref{fig:dct_reuse}, you can see the data reuse ratio for the DCT workload.
+We've analyzed both the forward and backward data reuse for each kernel:
+\begin{itemize}
+    \item \textbf{Forward data reuse:} the amount of unique memory addresses in kernel $k_{i-1}$ that are also present in kernel $k_{i}$ (as seen in \cref{fig:dct_forward_reuse}); i.e.
+    \begin{align}
+        \frac{|\text{footprint } k_{i-1} \cap \text{footprint } k_i|}{|\text{footprint } k_{i-1}|}
+    \end{align}
+    \item \textbf{Backward data reuse:} the amount of unique memory addresses in kernel $k_{i}$ that are also present in kernel $k_{i-1}$ (as seen in \cref{fig:dct_backward_reuse}); i.e.
+    \begin{align}
+        \frac{|\text{footprint } k_{i-1} \cap \text{footprint } k_i|}{|\text{footprint } k_i|}
+    \end{align}
+\end{itemize}
+
+When looking at the DCT workload, most kernels have a very high degree of data reuse, both backward and forward.
+As we analyzed before, this workload suffers heavily from the cold-start problem (in hardware).
+
+For contrast, we've also analyzed \verb|recursiveGaussian| (from the CUDA SDK); as you can see in \cref{fig:recg_reuse}.
+Roughly half of the kernels hit 50\% of data reuse (in either direction), while the other half has a much lower degree of data reuse.
+This is also reflected in the IPC difference due to the cold-start problem: only about 1.3\% of the workload suffers from at least 5\% IPC difference.
+
+The notion of data reuse, more specifically forward data reuse, will be used in the final chapter, when we discuss possible mitigations to the cold-start problem.
 
 \FloatBarrier
 \section{Hardware conclusion}\label{sec:hw-conclusion}

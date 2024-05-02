@@ -12,20 +12,13 @@ Taking this all into account means that we see a few options for mitigation:
     Simulating all instructions from one or more kernels that come right before the one we need ensures that the cache state is as close to the real state as possible, but also increases the simulation time.
     \item \textbf{Simulate certain instructions from preceding kernels:} this option is more refined than the previous, finding a balance between computation time and accuracy.
     Since we have the full trace of each kernel, we can select only the memory instructions from the preceding kernels, simulating those to warm up the caches artificially.
-    This is what we'll be analyzing in the rest of this section.
     Especially when kernels contain a lot of computations, and fewer memory loads/stores, this could allow for a higher accuracy at a very low cost.
     \item \textbf{Compute a correction factor:} logic dictates that there should be a way to compute a correction factor for the cold-start problem.
-    One way to go about this could be by basing it on a combination of the following factors:
-    \begin{itemize}
-        \item \textit{Profiler differences:} by profiling a workload twice, once with and once without flushing, one can see the impact of the cold-start problem in silicon.
-        This data might be used to improve simulation results.
-        \item \textit{Profiler cache statistics:} a detailed profiler like NVIDIA's Nsight Compute tool can provide statistics about hits and misses, which in turn could be used to compute the correction factor.
-        \item \textit{Memory footprint:} by using an instruction-level trace, it's possible to extract all memory references.
-        The ratio $\frac{\text{total memory references}}{\text{unique memory references}}$ could inform us about the cache state.
-    \end{itemize}
+    There are different factors that we could analyze ahead-of-time to compute this factor.
 \end{itemize}
 
-In this chapter, we'll focus on the second option, simulating memory instructions from preceding kernels.
+In \cref{sec:trace-info} and\ \ref{sec:kernel-selection}, we'll focus on the second option, opting to simulate memory instructions in order to artificially warm up the caches.
+Section \ref{sec:correction-factor} will focus on the third option, offering some possible factors that could be used to compute a correction factor.
 
 \FloatBarrier
 \section{Gathering trace info}\label{sec:trace-info}
@@ -98,3 +91,60 @@ An additional striking detail is that more kernels doesn't always imply a higher
 This might be due to some non-determinism in the simulator.
 
 % NOTE: get full mem trace requires non-compressed traces, takes immensely more disk space (see table III in Accelsim paper)
+\textit{Note:} AccelSim by default uses a compressed format for memory instructions, taking up less disk space in their traces.
+However, due to time constraints, we've elected to work with the uncompressed format, which takes up more disk space.
+
+\FloatBarrier
+
+\section{Correction factor}\label{sec:correction-factor}
+
+Since the cold-start problem is inherently tied to the cache state, we should look at factors that can impact this state in order to find a correction factor.
+Tools like NVIDIA's Nsight Compute\cite{nsight} and NVBit\cite{nvbit} can provide detailed cache statistics, which might be used to compute this factor.
+Some possible factors are:
+\begin{itemize}
+    \item \textit{Profiler differences:} by profiling a workload twice, once with and once without flushing, one can see the impact of the cold-start problem in silicon.
+    This data might be used to improve simulation results.
+    \item \textit{Profiler cache statistics:} a detailed profiler can provide statistics about hits and misses, which in turn could be used to compute the correction factor.
+    \item \textit{Degree of data reuse:} by using an instruction-level trace, it's possible to extract all memory references.
+    The ratio $\frac{\text{total memory references}}{\text{unique memory references}}$ could inform us about the cache state.
+    We've outlined the main ideas of \textit{forward data reuse} in \cref{sec:data-reuse} (that section also includes the notion of \textit{backward data reuse}, but that will prove not as useful here).
+    \item \textit{The DRAM delay:} the difference in cycles between a cache hit and a DRAM access could be useful to get an idea of the amount of cycles lost due to cold-start.
+    \item \textit{The number of memory controllers:} since each memory controller can issue requests in parallel, the number of controllers might impact the cache state, as well as the cost of a cache miss.
+    \item \textit{L2 miss rate:} this value could be used together with the \textit{number of memory instructions}.
+\end{itemize}
+
+\begin{figure}[hb]
+    \centering
+    \input{figures/mitigation/stats_dct}
+    \caption{DCT mitigation statistics}
+    \label{fig:dct_mitig}
+    \input{figures/mitigation/stats_ocean}
+    \caption{OceanFFT mitigation statistics}
+    \label{fig:ocean_mitig}
+\end{figure}
+
+We've gathered some of these factors in \cref{fig:dct_mitig} for a subset of the DCT workload.
+The kernel invocations for which a mitigation is required (kernels 11, 13, 114, and 115) are emphasized.
+In \cref{fig:ocean_mitig}, we've done the same for the OceanFFT workload (with its single high-impact kernel marked).
+
+However, we have to be careful when finding a correction factor.
+Since some factors that could impact cache state (e.g.\ the number of cache evictions) are hardware- and platform-dependent, we could end up with a correction factor that only works for a specific platform.
+
+\FloatBarrier
+\section{Conclusion}\label{sec:mitigation-conclusion}
+
+We've looked into three possible mitigations, and analyzed their strengths and weaknesses.
+First, there's the naive approach of simulating all preceding kernels in full, guaranteeing a correct warmup, and thus a ``perfectly accurate'' simulation.
+However, this has the drawback of being incredibly computationally intensive, negating the work done by sampling kernels in the first place.
+
+Secondly, we've looked into simulating only parts of the previous kernels.
+In this case, we've selected the memory instructions of preceding kernels and simulated those to artificially warm up the caches.
+Even for kernels that suffered a lot from the cold-start problem, we've shown that warming up using a single kernel has a drastic impact on the accuracy already.
+In many cases, a single kernel was enough to reach over 99\% accuracy.
+
+Finally, we've looked into possible correction factors.
+Some possible factors that can be used to create a comprehensive function to compute a correction factor have been outlined.
+These factors range from L2 miss rate and DRAM delay to higher-level statistics about inter-kernel data reusability.
+However, no conclusive results were found.
+We also noted that it might be possible to over-tune a solution like this.
+Computing a highly accurate correction factor like this might work perfectly on one platform but reduce accuracy on another, missing the point of GPU simulation entirely.
