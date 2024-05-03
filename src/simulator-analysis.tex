@@ -1,18 +1,18 @@
 \chapter{The Cold-Start Problem in AccelSim}\label{ch:sim-analysis}
 
-\section{Simulation results}\label{sec:simulation-results}
-The initial in-silicon analysis proved that the cold-start problem is, in fact, present in GPGPU hardware.
-In this chapter, we'll show that the impact of this problem persists in the AccelSim simulator.
-However, one of the first things we've noticed is that the simulator is affected much differently from the real hardware.
+We can now safely conclude that GPGPU hardware and workloads suffer from cold caches.
+In this chapter, we'll attempt to validate the existence of the cold-start problem when simulating.
+To this end, we'll use the AccelSim framework, with a similar configuration to the hardware we've used in the previous chapter.
 
-Due to the inherent overhead in simulating GPUs, we had to limit the number of kernels we could simulate, as well as which workloads we could focus on.
-The DCT and 3D U-Net workloads were selected for this analysis, as they showed promising results in the hardware analysis.
-Following our discussion about inter-kernel data reuse, we also included the OceanFFT workload (from the CUDA SDK) in this analysis.
+\section{Simulation setup}\label{sec:simulation-setup}
+The simulator we'll be using is AccelSim\cite{accelsim}.
+As discussed in \cref{sec:gpu-simulation}, AccelSim uses the GPGPU-Sim\cite{gpgpu-sim} system to perform actual simulation.
+However, we're able to speed everything up by avoiding full-functional simulation.
+To achieve this, we use pre-generated traces, which can be replayed in the simulator.
+This also means that we can just use compiled binaries, not needing any source at all.
 
-We set up AccelSim to use the existing, tested configurations for the NVIDIA GeForce RTX 3070 hardware (SM 86).
-The basic configuration parameters are shown in \cref{fig:sim_config}.
-Again, each workload was run twice: once with the cache flushed between kernel invocations, and once without.
-AccelSim natively supports flushing caches using the \verb|-flush-l1 -flush-l2| arguments.
+In the experiments discussed below, we've used the GPGPU-Sim configuration for the NVIDIA GeForce RTX 3070 hardware (running on SM 86; as described in\ \cite{nvidia-wp}).
+Some of its configuration parameters are shown in \cref{fig:sim_config}.
 
 \begin{figure}[ht]
     \centering
@@ -20,6 +20,64 @@ AccelSim natively supports flushing caches using the \verb|-flush-l1 -flush-l2| 
     \caption{Simulator configuration parameters}
     \label{fig:sim_config}
 \end{figure}
+
+Just like with the hardware analysis, we'll be simulating each workload twice: once with the cache flushed between kernel invocations, and once without.
+This is a feature that AccelSim natively supports, using the \verb|-flush-l1 -flush-l2| arguments.
+
+\FloatBarrier
+\section{Preparation}\label{sec:preparation}
+In order to simulate each workload, we needed to profile them again.
+In the previous chapter, we used NVIDIA's Nsight Compute tool, which is a lightweight profiler.
+However, we need a cycle-level trace for the simulator, which means that we'll need something more powerful.
+
+Preparing a workload for simulation has two big steps:
+\begin{enumerate}
+    \item \textit{Profiling:} AccelSim requires a cycle-level trace.
+    We'll discuss the exact process below, in \cref{subsec:profiling-phase}.
+    \item \textit{Post-processing:} the trace, as generated in the profiling phase, is not yet fit for simulation.
+    AccelSim includes a post-processing tool, which allows us to convert the trace.
+    We will also shortly discuss this in \cref{subsec:profiling-phase}.
+\end{enumerate}
+
+\subsection{Profiling phase}\label{subsec:profiling-phase}
+One of the components of the AccelSim framework is an NVBit\cite{nvbit} tool.
+
+NVBit is a framework, developed by NVIDIA, to instrument CUDA applications.
+It allows us to, among others, catch certain events (like kernel invocations), and insert additional instructions and calls in a kernel.
+Each NVBit tool is compiled into a shared library, which is then injected into the application.
+To this end, the \verb|LD_PRELOAD| trick is used; which allows us to load a shared library before any other library.
+
+AccelSim's is in the \verb|util/tracer_nvbit/tracer_tool| directory.
+It roughly works like this:
+\begin{enumerate}
+    \item The runtime will register that the NVBit tool has declared the \verb|nvbit_at_cuda_event| function.
+    At each CUDA event, this function will be invoked, with details on the event.
+    \item When the function is invoked, it checks if it's due to the invocation of a kernel that hasn't been instrumented yet.
+    If this is the case, the tool will instrument the kernel by adding a call to \verb|instrument_inst| before each instruction in the kernel.
+    The arguments it passes to this function call depend on the instruction that's being instrumented.
+    \item Each time \verb|instrument_inst| is called, it receives some information about the instruction that is to come.
+    This information is written on a channel to another thread, which will write it to a file.
+\end{enumerate}
+
+In this way, a directory with a trace file for each kernel is generated.
+These trace files contain an instruction-level trace for each kernel.
+Additionally, it generates \verb|kernelslist|, an additional file containing a reference to each file generated.
+
+However, due to interleaving of threads, these traces are not in the correct order yet for the simulator.
+The post-processing tool, in the \verb|util/tracer_nvbit/tracer_tool/traces-processing| directory, will make sure that the traces are ready to be used.
+It reads each trace file listed in the given \verb|kernelslist| file, sorting the instructions by thread block.
+This makes sure that the simulator can quickly access the instructions it needs to simulate a given thread block.
+
+These sorted traces are each written to their own new file, while an additional \verb|kernelslist.g| file is generated, referencing the processed traces.
+
+\FloatBarrier
+\section{Simulation results}\label{sec:simulation-results}
+In this section, we'll show that the impact of this problem persists in the AccelSim simulator.
+However, one of the first things we've noticed is that the simulator is affected much differently from the real hardware.
+
+Due to the inherent overhead in simulating GPUs, we had to limit the number of kernels we could simulate, as well as which workloads we could focus on.
+The DCT and 3D U-Net workloads were selected for this analysis, as they showed promising results in the hardware analysis.
+Following our discussion about inter-kernel data reuse, we also included the OceanFFT workload (from the CUDA SDK) in this analysis.
 
 \begin{figure}[ht]
     \centering
