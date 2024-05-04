@@ -1,0 +1,55 @@
+% max 1 page
+% en & nl
+
+\chapter*{Summary}
+Many modern applications and workloads depend on GPUs, ranging from gaming and graphics to machine learning and graph analysis.
+To support this ever-growing need for high-performance parallel processing, constant innovation in GPUs and their micro-architectures is a must.
+These innovations require methods to verify that changes made are beneficial for real workloads.
+
+One way to verify these changes is through simulation, using e.g.\ AccelSim.
+These simulations are a cheaper and more practical way to test new architectures, as compared to in-silicon verification.
+The computational overhead of the simulation implies that only a subset of all kernels can be simulated within reasonable time.
+To remedy this, techniques like PKS and Sieve are used.
+
+These techniques focus on selecting a subset of kernels in a workload, simulating only these, and then generalizing the results to the entire workload.
+This process takes a few steps, starting with profiling the workload.
+After profiling, statistical techniques are used in combination with clustering algorithms to determine which kernels to simulate.
+
+This selection is then run through a simulator, giving us a certain set of performance metrics.
+These metrics are then generalized to the entire workload, giving us an estimate of the performance of the workload on the new architecture.
+
+However, these techniques start from a flawed assumption.
+When simulating an entire workload, preceding kernels might have impacted the state of the caches on the simulated GPU\@.
+This cache state might lead to a different performance, depending on the degree of data reuse between kernels.
+This problem is commonly named the \textit{cold-start problem}, referring to the cold state of the caches at the start of the execution.
+
+In this thesis, we aim to show that the cold-start problem exists in both hardware and simulation.
+After that, we've come up with a few possible mitigations, raising accuracy to a level where the cold-start problem is no longer significant.
+We focus on both accuracy and feasibility, as the techniques should be applicable to real-world workloads.
+
+\chapter*{Samenvatting}
+Deze dagen zijn er veel applicaties en \textit{workloads} die grafische kaarten (\textit{GPU's}) gebruiken, van games en andere grafische toepassingen tot machine learning en graaf-analyse.
+Om deze groeiende vraag naar performante parallelle programma's mogelijk te blijven maken, is er een constante nood aan innovatie in GPU's en hun micro-architectuur.
+Deze innovaties moeten echter altijd getest worden om er zeker van te zijn dat de veranderingen ook daadwerkelijk een verbetering zijn.
+
+Een veel gebruikte manier om deze veranderingen te controleren, is door het gebruik van simulaties, bijvoorbeeld door gebruik te maken van AccelSim.
+Deze simulaties zijn een goedkopere en meer praktische manier om nieuwe architecturen te testen, vergeleken met het bouwen van een nieuwe chip.
+Het nadeel van deze simulaties is dat ze veel rekenkracht vereisen, waardoor het niet altijd mogelijk is om alle kernels in een \textit{workload} te simuleren.
+Het simuleren van een volledige \textit{workload} zou vaak te lang duren, waardoor er technieken zoals PKS en Sieve gebruikt worden.
+
+Deze technieken bepalen een deelverzameling van de \textit{kernels}, die dan gesimuleerd worden.
+De resultaten van de simulatie worden dan veralgemeend naar de volledige \textit{workload}.
+Dit proces bestaat uit een aantal stappen, beginnend met het profileren van de \textit{workload}.
+Nadat een \textit{workload} geprofileerd is, worden statistische technieken gebruikt in combinatie met \textit{clustering} algoritmes om te bepalen welke kernels gesimuleerd worden.
+
+Deze geselecteerde kernels worden dan gesimuleerd, waarna we een aantal prestatie-metingen krijgen.
+Deze metingen worden dan veralgemeend naar de volledige \textit{workload}, waardoor we een schatting krijgen van de prestaties van de \textit{workload} op de nieuwe architectuur.
+
+Deze technieken vertrekken echter van een gedeeltelijk foutieve aanname.
+Wanneer een volledige \textit{workload} gesimuleerd wordt, kunnen de kernels die voorafgaan aan de gesimuleerde kernel de staat van de caches op de gesimuleerde GPU beïnvloed hebben.
+De staat van deze caches kan de prestaties van de gesimuleerde kernel beïnvloeden, afhankelijk van de mate waarin de data hergebruikt wordt tussen de kernels.
+Dit probleem wordt vaak het \textit{cold-start} probleem genoemd, verwijzend naar de ``koude'' staat van de caches aan het begin van de uitvoering.
+
+In deze thesis proberen we aan te tonen dat het \textit{cold-start} probleem zowel in hardware als in simulaties bestaat.
+Daarnaast hebben we een aantal mogelijke oplossingen bedacht, die de nauwkeurigheid van de simulaties verhogen tot een niveau waarop het \textit{cold-start} probleem niet langer significant is.
+We focussen op zowel nauwkeurigheid als haalbaarheid, aangezien de technieken ook toepasbaar moeten zijn op echte \textit{workloads}.

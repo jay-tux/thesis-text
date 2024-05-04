@@ -33,11 +33,17 @@
 \begin{document}
 
     \maketitle
+    \pagenumbering{roman}
+    \include{summary}
     \include{abstract}
+    \include{reuse}
+    
     \tableofcontents
+    \pagenumbering{arabic}
 
     \include{introduction}
     \include{literature}
+    \include{cold-start}
     \include{hardware-analysis}
     \include{simulator-analysis}
     \include{mitigation}
