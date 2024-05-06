@@ -1,17 +1,17 @@
 \chapter{The Cold-Start Problem in AccelSim}\label{ch:sim-analysis}
 
 We can now safely conclude that GPGPU hardware and workloads suffer from cold caches.
-In this chapter, we'll attempt to validate the existence of the cold-start problem when simulating.
-To this end, we'll use the AccelSim framework, with a similar configuration to the hardware we've used in the previous chapter.
+In this chapter, we will attempt to validate the existence of the cold-start problem when simulating.
+To this end, we will use the AccelSim framework, with a similar configuration to the hardware we've used in the previous chapter.
 
 \section{Simulation setup}\label{sec:simulation-setup}
-The simulator we'll be using is AccelSim\cite{accelsim}.
+The simulator we will be using is AccelSim\cite{accelsim}.
 As discussed in \cref{sec:gpu-simulation}, AccelSim uses the GPGPU-Sim\cite{gpgpu-sim} system to perform actual simulation.
-However, we're able to speed everything up by avoiding full-functional simulation.
+However, we are able to speed everything up by avoiding full-functional simulation.
 To achieve this, we use pre-generated traces, which can be replayed in the simulator.
 This also means that we can just use compiled binaries, not needing any source at all.
 
-In the experiments discussed below, we've used the GPGPU-Sim configuration for the NVIDIA GeForce RTX 3070 hardware (running on SM 86; as described in\ \cite{nvidia-wp}).
+In the experiments discussed below, we have used the GPGPU-Sim configuration for the NVIDIA GeForce RTX 3070 hardware (running on SM 86; as described in\ \cite{nvidia-wp}).
 Some of its configuration parameters are shown in \cref{fig:sim_config}.
 
 \begin{figure}[ht]
@@ -21,19 +21,19 @@ Some of its configuration parameters are shown in \cref{fig:sim_config}.
     \label{fig:sim_config}
 \end{figure}
 
-Just like with the hardware analysis, we'll be simulating each workload twice: once with the cache flushed between kernel invocations, and once without.
+Just like with the hardware analysis, we will be simulating each workload twice: once with the cache flushed between kernel invocations, and once without.
 This is a feature that AccelSim natively supports, using the \verb|-flush-l1 -flush-l2| arguments.
 
 \FloatBarrier
 \section{Preparation}\label{sec:preparation}
 In order to simulate each workload, we needed to profile them again.
 In the previous chapter, we used NVIDIA's Nsight Compute tool, which is a lightweight profiler.
-However, we need a cycle-level trace for the simulator, which means that we'll need something more powerful.
+However, we need a cycle-level trace for the simulator, which means that we will need something more powerful.
 
 Preparing a workload for simulation has two big steps:
 \begin{enumerate}
     \item \textit{Profiling:} AccelSim requires a cycle-level trace.
-    We'll discuss the exact process below, in \cref{subsec:profiling-phase}.
+    We will discuss the exact process below, in \cref{subsec:profiling-phase}.
     \item \textit{Post-processing:} the trace, as generated in the profiling phase, is not yet fit for simulation.
     AccelSim includes a post-processing tool, which allows us to convert the trace.
     We will also shortly discuss this in \cref{subsec:profiling-phase}.
@@ -47,14 +47,14 @@ It allows us to, among others, catch certain events (like kernel invocations), a
 Each NVBit tool is compiled into a shared library, which is then injected into the application.
 To this end, the \verb|LD_PRELOAD| trick is used; which allows us to load a shared library before any other library.
 
-AccelSim's is in the \verb|util/tracer_nvbit/tracer_tool| directory.
+AccelSim's tool is in the \verb|util/tracer_nvbit/tracer_tool| directory.
 It roughly works like this:
 \begin{enumerate}
     \item The runtime will register that the NVBit tool has declared the \verb|nvbit_at_cuda_event| function.
     At each CUDA event, this function will be invoked, with details on the event.
-    \item When the function is invoked, it checks if it's due to the invocation of a kernel that hasn't been instrumented yet.
+    \item When the function is invoked, it checks if it is due to the invocation of a kernel that has not been instrumented yet.
     If this is the case, the tool will instrument the kernel by adding a call to \verb|instrument_inst| before each instruction in the kernel.
-    The arguments it passes to this function call depend on the instruction that's being instrumented.
+    The arguments it passes to this function call depend on the instruction that is being instrumented.
     \item Each time \verb|instrument_inst| is called, it receives some information about the instruction that is to come.
     This information is written on a channel to another thread, which will write it to a file.
 \end{enumerate}
@@ -72,8 +72,8 @@ These sorted traces are each written to their own new file, while an additional 
 
 \FloatBarrier
 \section{Simulation results}\label{sec:simulation-results}
-In this section, we'll show that the impact of this problem persists in the AccelSim simulator.
-However, one of the first things we've noticed is that the simulator is affected much differently from the real hardware.
+In this section, we will show that the impact of this problem persists in the AccelSim simulator.
+However, one of the first things we have noticed is that the simulator is affected much differently from the real hardware.
 
 Due to the inherent overhead in simulating GPUs, we had to limit the number of kernels we could simulate, as well as which workloads we could focus on.
 The DCT and 3D U-Net workloads were selected for this analysis, as they showed promising results in the hardware analysis.
@@ -81,12 +81,8 @@ Following our discussion about inter-kernel data reuse, we also included the Oce
 
 \begin{figure}[ht]
     \centering
-    \begin{minipage}[c]{0.45\textwidth}
-        \resizebox{\textwidth}{!}{\input{figures/simulated/full_dct_ocean_unet_table}}
-    \end{minipage}
-    \begin{minipage}[c]{0.45\textwidth}
-        \resizebox{\textwidth}{!}{\input{figures/simulated/full_dct_ocean_unet_sim.pgf}}
-    \end{minipage}
+    \append{./figures/simulated/full_dct_ocean_unet_sim.pgf}
+    \append{./figures/simulated/full_dct_ocean_unet_table}
     \caption{Weighted IPC differences}
     \label{fig:sim_ipc_diff}
 \end{figure}
@@ -105,7 +101,7 @@ The other four kernels (kernel \#1, \#3, \#4, and \#5) are not affected by the c
 
 \begin{figure}[ht]
     \centering
-    \resizebox{0.66\textwidth}{!}{\input{figures/simulated/ocean_kernels}}
+    \appendW{figures/simulated/ocean_kernels}{}
     \caption{OceanFFT kernels}
     \label{fig:ocean_kernels}
 \end{figure}
@@ -115,6 +111,6 @@ The other four kernels (kernel \#1, \#3, \#4, and \#5) are not affected by the c
 Once again, we see that the cold-start problem persists.
 However, it is much less severe in the simulator.
 
-In the next chapter, we'll go looking for a mitigation, limiting the impact of the cold-start problem.
-We'll mostly analyze the DCT workload, due to its short runtime and thus reasonable runtime.
-The OceanFFT will prove to not be very promising, having the ``problematic'' kernel as second kernel chronologically.
+In the next chapter, we will start looking for a mitigation, limiting the impact of the cold-start problem.
+We will mostly analyze the DCT workload, due to its short runtime and thus reasonable runtime.
+%The OceanFFT will prove to not be very promising, having the ``problematic'' kernel as second kernel chronologically, limiting our analysis of

@@ -1,0 +1,31 @@
+\newcommand{\pgfLblSize}{11.000000}
+\newcommand{\pgfLblLarge}{15.000000}
+\newcommand{\pgfHeaderSize}{20.000000}
+
+\newcommand{\append}[1]{
+    \begin{minipage}[c]{0.66\textwidth}
+        \resizebox{\textwidth}{!}{\input{#1}}
+    \end{minipage}
+}
+
+\newcommand{\appendW}[2]{
+    \begin{minipage}[c]{#2\textwidth}
+        \resizebox{\textwidth}{!}{\input{#1}}
+    \end{minipage}
+}
+
+\newcommand{\appendC}[3]{
+    \begin{subfigure}{0.66\textwidth}
+        \resizebox{\textwidth}{!}{\input{#1}}
+        \caption{#2}
+        \label{#3}
+    \end{subfigure}
+}
+
+\newcommand{\appendCW}[4]{
+    \begin{subfigure}{#4\textwidth}
+        \resizebox{\textwidth}{!}{\input{#1}}
+        \caption{#2}
+        \label{#3}
+    \end{subfigure}
+}

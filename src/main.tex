@@ -13,9 +13,9 @@
 \usepackage{subcaption}
 \usepackage{lscape}
 \usepackage{hyperref}
-\usepackage{cleveref}
 \usepackage{placeins}
 \usepackage{arydshln}
+\usepackage[noabbrev]{cleveref}
 
 \def\mathdefault#1{#1}
 \everymath=\expandafter{\the\everymath\displaystyle}
@@ -25,6 +25,8 @@
 \usetikzlibrary{arrows.meta} %define styles in graph
 
 \usepgfplotslibrary{external}
+
+\input{macros}
 
 \author{Jonas Sys}
 \title{Quantifying and Mitigating the Cold-Start Problem in GPU Simulation}

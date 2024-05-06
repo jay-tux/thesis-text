@@ -1,6 +1,6 @@
 \chapter{Literature Review}\label{ch:literature-review}
 The topic of GPU simulation has been studied extensively, albeit not as extensively as CPU simulation.
-Before continuing with the cold-start problem, we'll shortly discuss the current state of GPU simulation.
+Before continuing with the cold-start problem, we will shortly discuss the current state of GPU simulation.
 The three main papers this thesis is based on are \textit{AccelSim}\cite{accelsim}, \textit{Principal Kernel Analysis}\cite{pks}, and \textit{Sieve}\cite{sieve}.
 The first of these provides the simulator we use, while the latter two provide the kernel sampling techniques that are commonly used to speed up simulation.
 
@@ -60,7 +60,7 @@ Firstly, the tuner uses micro-benchmarks to tune the simulator; each of these mi
 \end{itemize}
 
 After running these micro-benchmarks, the tuner reads the results and provides a configuration file which can be fed to the performance model.
-Some parameters can't be determined by the benchmarks themselves, like warp scheduling policy, memory scheduling, and some L2 cache parameters (interleaving and hash function).
+Some parameters cannot be determined by the benchmarks themselves, like warp scheduling policy, memory scheduling, and some L2 cache parameters (interleaving and hash function).
 To determine these, the tuner will attempt to simulate each possible combination on a set of memory bandwidth micro-benchmarks.
 The configuration with the highest average hardware correlation is then picked to be the correct one.
 \\
@@ -79,7 +79,7 @@ Half of this speedup comes from the trace-driven mode, which avoids overhead of 
 The user can also set kernel-based checkpoints to avoid simulation of non-interesting regions.
 
 The other half of the speedup comes from a simulation optimization strategy called \textit{simulation-gating}, which provides a tradeoff between event-driven and cycle-driven simulation.
-During simulation, it's quite often the case to have thousands of in-flight memory requests from hundreds of active threads.
+During simulation, it is quite often the case to have thousands of in-flight memory requests from hundreds of active threads.
 This means that each cycle, there is always something to simulate.
 However, ticking every component every cycle can be expensive, especially if there are quite a few empty components (e.g.\ cores, execution units, caches, and DRAM channels).
 To avoid this, the simulator only ticks the active components.
@@ -99,7 +99,7 @@ Finally, neither of these options have really been validated against scaled work
 To come up with a better solution, the authors turned their attention to the solutions employed when simulating CPUs.
 For CPU workloads, the simulation often focuses on selecting a subset of the basic blocks in each thread.
 However, this does not translate well to GPU simulation, as the control-flow graphs (CFGs) each GPU thread executes are usually small and trivial compared to CPU CFGs.
-To really make a difference in simulation time, you'd need to curtail the number of threads, rather than the number of basic blocks per thread.
+To really make a difference in simulation time, you would need to curtail the number of threads, rather than the number of basic blocks per thread.
 
 \subsection{Principal Kernel Analysis}\label{subsec:principle-kernel-analysis}
 To select a subset of the kernels to simulate (and thus limit the number of threads), the authors propose a new technique called Principal Kernel Analysis (PKA).
@@ -172,7 +172,7 @@ A smaller value for $s$ leads to higher accuracy at the cost of a longer simulat
 According to the authors, a value of $s = 0.25$ should be fine.
 
 \section{Improving PKA}\label{sec:improving-pka-sieve}
-While PKA is a very powerful technique, leading to drastically lower simulation times while still maintaining a high accuracy for most application, it isn't perfect yet.
+While PKA is a very powerful technique, leading to drastically lower simulation times while still maintaining a high accuracy for most application, it is not perfect yet.
 The main issues with PKA, as outlined in the Sieve paper\cite{sieve}, are:
 \begin{itemize}
     \item Since the PKS phase assumes the same execution time for all invocations in a cluster, there is a very large variability in cycle count.

@@ -2,7 +2,7 @@
 
 \section{Initial profiling}\label{sec:initial-profiling}
 Firstly, we need to quantify and detect whether the cold-start problem exists in GPGPU hardware.
-To this end, we've analyzed some workloads and benchmarks using the NVIDIA Nsight Compute tool.
+To this end, we have analyzed some workloads and benchmarks using the NVIDIA Nsight Compute tool.
 This tool allows us to control the caches during the execution of an application.
 Additionally, we can gather detailed metrics, like IPC, for each kernel in the workload.
 
@@ -17,8 +17,8 @@ This proved easier said than done, as the kernel IDs were not consistent between
 
 \begin{figure}
     \centering
-    \resizebox{0.45\textwidth}{!}{\input{./figures/hardware/mlperf_cactus_boxplot.pgf}}
-    \resizebox{0.45\textwidth}{!}{\input{./figures/hardware/dct_ocean_boxplot.pgf}}
+    \append{./figures/hardware/mlperf_cactus_boxplot.pgf}
+    \append{./figures/hardware/dct_ocean_boxplot.pgf}
     \caption{Relative IPC difference}
     \label{fig:ipc_diff}
 \end{figure}
@@ -54,38 +54,27 @@ To combine the clusters and compute a final result, each cluster's result is wei
     w_{kernel} &= \frac{\text{kernel instruction count}}{\sum_{\text{kernel } k \in \text{ workload}}{\text{kernel}_k \text{ instruction count}}} \\
     w_{cluster} &= \sum_{\text{kernel } k \in \text{ cluster}} w_{kernel}
 \end{align*}
-In order to get a better view of the impact of the cold start problem, we've also computed IPC difference when each kernel is weighted by its instruction count.
+In order to get a better view of the impact of the cold start problem, we have also computed IPC difference when each kernel is weighted by its instruction count.
 
-\begin{figure}[t]
+\begin{figure}[ht]
     \centering
-    \begin{subfigure}{\textwidth}
-        \begin{minipage}[c]{0.45\textwidth}
-            \resizebox{\textwidth}{!}{\input{figures/hardware/table_mlperf_cactus}}
-        \end{minipage}
-        \begin{minipage}[c]{0.45\textwidth}
-            \resizebox{\textwidth}{!}{\input{figures/hardware/mlperf_cactus_weight.pgf}}
-        \end{minipage}
-        \caption{Weighted IPC differences}
-        \label{fig:weight_ipc_diff}
-    \end{subfigure}
+    \append{figures/hardware/mlperf_cactus_weight.pgf}
+    \append{figures/hardware/table_mlperf_cactus}
+    \caption{Weighted IPC differences for MLPerf and Cactus}
+    \label{fig:weight_ipc_diff}
+\end{figure}
+\begin{figure}[htb]
     \centering
-    \begin{subfigure}{\textwidth}
-        \begin{minipage}[c]{0.45\textwidth}
-            \resizebox{\textwidth}{!}{\input{figures/hardware/table_dct_ocean}}
-        \end{minipage}
-        \begin{minipage}[c]{0.45\textwidth}
-            \resizebox{\textwidth}{!}{\input{figures/hardware/dct_ocean.pgf}}
-        \end{minipage}
-        \caption{Weighted IPC differences for different DCT inputs}
-        \label{fig:weight_ipc_dct}
-    \end{subfigure}
-    \caption{Weighted IPC differences}
+    \append{figures/hardware/dct_ocean.pgf}
+    \append{figures/hardware/table_dct_ocean}
+    \caption{Weighted IPC differences for DCT}
+    \label{fig:weight_ipc_dct}
 \end{figure}
 
 In \cref{fig:weight_ipc_diff}, you can see the result of this analysis for the Cactus and MLPerf workloads.
 The results for the DCT workload (with its same four input images) is shown in \cref{fig:weight_ipc_dct}.
-We've set four thresholds for the relative IPC difference (5\%, 10\%, 15\%, and 20\%).
-For each of these thresholds, we've summed up the weights of all kernels where the IPC difference is at least that much.
+We have set four thresholds for the relative IPC difference (5\%, 10\%, 15\%, and 20\%).
+For each of these thresholds, we have summed up the weights of all kernels where the IPC difference is at least that much.
 This means that e.g.\ for the GRU workload, approximately 16\% of the entire workload suffers from a difference of at least 5\%.
 
 From these figures, we end up with a different set of affected workloads.
@@ -98,43 +87,27 @@ It consistently suffers from at least 20\% relative IPC difference, no matter th
 
 \section{Data reuse}\label{sec:data-reuse}
 We assume that the cold-start problem is more prevalent in workloads with high data reuse.
-To verify this, we've analyzed the degree of inter-kernel data reuse in the DCT workload.
-For each kernel, we've profiled all memory instructions and extracted the unique memory addresses.
+To verify this, we have analyzed the degree of inter-kernel data reuse in the DCT workload.
+For each kernel, we have profiled all memory instructions and extracted the unique memory addresses.
 
-\begin{figure}[ht]
+\begin{figure}[htb]
     \centering
-    \begin{subfigure}{0.4\textwidth}
-        \resizebox{\textwidth}{!}{\input{./figures/hardware/dct_forward_reuse.pgf}}
-        \caption{Forward data reuse}
-        \label{fig:dct_forward_reuse}
-    \end{subfigure}
-    \begin{subfigure}{0.4\textwidth}
-        \resizebox{\textwidth}{!}{\input{./figures/hardware/dct_backward_reuse.pgf}}
-        \caption{Backward data reuse}
-        \label{fig:dct_backward_reuse}
-    \end{subfigure}
+    \appendCW{./figures/hardware/dct_forward_reuse.pgf}{Forward data reuse}{fig:dct_forward_reuse}{0.6}
+    \appendCW{./figures/hardware/dct_backward_reuse.pgf}{Backward data reuse}{fig:dct_backward_reuse}{0.6}
     \caption{Inter-kernel data reuse in DCT}
     \label{fig:dct_reuse}
 \end{figure}
 
-\begin{figure}[ht]
+\begin{figure}[hbt]
     \centering
-    \begin{subfigure}{0.4\textwidth}
-        \resizebox{\textwidth}{!}{\input{./figures/hardware/recg_forward_reuse.pgf}}
-        \caption{Forward data reuse}
-        \label{fig:recg_forward_reuse}
-    \end{subfigure}
-    \begin{subfigure}{0.4\textwidth}
-        \resizebox{\textwidth}{!}{\input{./figures/hardware/recg_backward_reuse.pgf}}
-        \caption{Backward data reuse}
-        \label{fig:recg_backward_reuse}
-    \end{subfigure}
+    \appendCW{./figures/hardware/recg_forward_reuse.pgf}{Forward data reuse}{fig:recg_forward_reuse}{0.6}
+    \appendCW{./figures/hardware/recg_backward_reuse.pgf}{Backward data reuse}{fig:recg_backward_reuse}{0.6}
     \caption{Inter-kernel data reuse in recursiveGaussian}
     \label{fig:recg_reuse}
 \end{figure}
 
 In \cref{fig:dct_reuse}, you can see the data reuse ratio for the DCT workload.
-We've analyzed both the forward and backward data reuse for each kernel:
+We have analyzed both the forward and backward data reuse for each kernel:
 \begin{itemize}
     \item \textbf{Forward data reuse:} the amount of unique memory addresses in kernel $k_{i-1}$ that are also present in kernel $k_{i}$ (as seen in \cref{fig:dct_forward_reuse}); i.e.
     \begin{align}
@@ -149,7 +122,7 @@ We've analyzed both the forward and backward data reuse for each kernel:
 When looking at the DCT workload, most kernels have a very high degree of data reuse, both backward and forward.
 As we analyzed before, this workload suffers heavily from the cold-start problem (in hardware).
 
-For contrast, we've also analyzed \verb|recursiveGaussian| (from the CUDA SDK); as you can see in \cref{fig:recg_reuse}.
+For contrast, we have also analyzed \verb|recursiveGaussian| (from the CUDA SDK); as you can see in \cref{fig:recg_reuse}.
 Roughly half of the kernels hit 50\% of data reuse (in either direction), while the other half has a much lower degree of data reuse.
 This is also reflected in the IPC difference due to the cold-start problem: only about 1.3\% of the workload suffers from at least 5\% IPC difference.
 
@@ -160,7 +133,7 @@ The notion of data reuse, more specifically forward data reuse, will be used in 
 From this, we can conclude that the cold-start problem does exist in hardware.
 Additionally, we noticed that the problem changes severity when we take each relative kernel's instruction count into account, giving us other workloads to focus on.
 Finally, we suspected that workloads with high inter-kernel data reuse would suffer more from the cold-start problem.
-This was confirmed by the DCT workload, as we've shown in \cref{fig:dct_reuse}.
+This was confirmed by the DCT workload, as we have shown in \cref{fig:dct_reuse}.
 
-In the next chapter, we'll be analyzing the impact of the cold-start problem in the AccelSim simulator.
+In the next chapter, we will be analyzing the impact of the cold-start problem in the AccelSim simulator.
 We'll mostly use the DCT and 3D U-Net workloads for this, as well as the OceanFFT one.
