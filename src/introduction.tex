@@ -1,18 +1,178 @@
 \chapter{Introduction}\label{ch:introduction}
 
-Every year, more and more AI and machine learning papers are published\cite{aiindex}.
-Many machine learning algorithms rely on GPU computations to train their models, creating a growing need for more and faster GPUs.
-Improvements to GPUs can be done, among other means, by improving upon their internal micro-architecture.
-These changes, however, always need to be verified to ensure that they are, in fact, improvements.
+\section{GPUs}\label{sec:gpus}
+Graphics Processing Units (or GPUs for short), are specialized electronic circuits (or chips), originally designed to accelerate computer graphics.
+In the modern day, these chips are most known in their standalone form: as a separate card that can be plugged into a computer's motherboard.
+However, they are also often integrated into CPUs, as is the case with Intel's integrated GPUs, or AMD's APUs.
 
-When verifying, simulation usually provides results at a lower cost, albeit with lower accuracy.
-To this end, simulators like AccelSim\cite{accelsim} are used.
-However, it has also been shown that simulation has a huge overhead; applications that would take only about an hour on real hardware could easily take upwards of a century\cite{pks}.
-Some research has gone to speeding up this simulation.
-For example Principle Kernel Analysis\cite{pks}, Sieve\cite{sieve}, and Photon\cite{photon} use sampling to select a few kernels, using those as representatives for the entire workload.
+The history of GPUs goes back to 1968, when the \textit{Evans and Sutherland Computer Corporation} was founded~\cite{gpu-evolution}.
+This company built special-purpose 3D graphics hardware, which was mostly used in flight simulators.
+The hardware they made took several racks, and was extremely expensive.
 
-The speed-up gained from these techniques comes with a cost to accuracy, as intermediate kernels might have modified the cache state.
-This might lead to superfluous cache misses or incorrect cache hits, as loads and/or evictions might not have been performed.
-This problem is known as the cold-start problem, and has been researched with respect to the simulation of CPUs\cite{coolsim}.
+The advent of 3D video gaming consoles, around 1994, brought about the era of mass-market 3D gaming.
+This led to the founding of a lot of companies, all focused on bringing 2.5D and 3D graphics hardware to PCs.
+One of these companies was NVIDIA, which was founded in 1993.
 
-I aim to show that this problem persists when simulating GPUs, as well as show that it can be mitigated, albeit at the cost of a slightly higher simulation time.
+They released the GeForce 256 in 1999, which is commonly regarded as the first ``real'' GPU\@.
+Up to this point, the vertex processing (transforming 3D data into 2D coordinates for the screen), was done by the CPU, which was not built for this task.
+The actual rendering (computing lighting and shading) was already done by the GPU\@.
+The GeForce 256 allowed offloading the vertex processing to the GPU as well, allowing higher geometric complexity.
+At this point, computations were still done in fixed-function pipelines, which were hardwired to perform specific tasks.
+
+This would change with the introduction of the GeForce 3 (also known as the NV20) GPU in 2001.
+It introduced programmable vertex shaders, where the vertex processing stage could be programmed by the user.
+In the following year, GeForce FX introduced programmable fragment shaders, allowing the user to take full control of the rendering pipeline.
+
+At this point, GPUs were already very powerful, allowing for a lot of parallel computations to be done.
+The GeForce 6, for example, had a peak performance of 108 GFLOPS (billion floating-point operations per second).
+This dwarfed the performance of CPUs, which were only capable of a few GFLOPS at the time.
+The flexibility of the pipeline allowed for a lot of different applications to be run on the GPU, making it a very attractive platform for scientific computing.
+Despite this, programming for GPUs was still extremely challenging, as both in- and output were very restrictive.
+Problems had to be translated to a set of vertices, which were then rendered, and the results had to be read back from the framebuffer.
+
+2006 saw the introduction of the \textit{streaming multiprocessor} (SM), a piece of hardware that was used to run both vertex and fragment shaders.
+Additionally, these SMs could also run \textit{compute shaders}, which allowed users to run code on the GPU, independent of the graphics pipeline.
+
+This grew into the CUDA (Compute Unified Device Architecture) platform~\cite{cuda, cuda-prog}, which was introduced in 2007.
+CUDA allows users to write code in C, which is then compiled to run on the GPU\@.
+The full CUDA software stack consists of three main elements:
+\begin{itemize}
+    \item The CUDA hardware driver, which is responsible for managing the GPU and scheduling work.
+    \item The CUDA API and its associated runtime.
+    The API is an extension to the C programming language.
+    \item Mathematical libraries, optimized to be run on GPUs.
+\end{itemize}
+
+We will focus mostly on the compute capabilities of GPUs (specifically newer generations of NVIDIA GPUs), as they are the most relevant to our research.
+
+Every year, more and more AI and machine learning papers are published~\cite{aiindex}.
+Many of these machine learning algorithms rely on GPU computations to train their models, creating a growing need for more and faster GPUs.
+Innovations to GPU hardware often require changing the micro-architecture.
+These changes require verification to ensure that they are, in fact, improvements.
+However, the creation of a new, physical GPU is very costly and time-consuming.
+To avoid this overhead and allow for a faster iteration cycle, simulation is used.
+
+\section{GPU Simulation}\label{sec:simulation}
+The main idea behind simulation is to model the behavior of a system, and then run this model on a computer.
+This allows for the system to be tested in a controlled environment, without the need for the actual hardware.
+This is especially useful for GPUs, as the hardware is very expensive, and the development cycle is very long.
+
+A good (architectural) simulator should be flexible, to allow the end-user to make drastic changes to the hardware architecture, without excessive effort.
+That being said, an accurate model is very hard to build.
+Two factors hinder us in this regard:
+\begin{itemize}
+    \item The desire for increased abstraction; many models are kept at a high level of abstraction, allowing for easier understanding.
+    However, the hidden details can make the model less accurate.
+    \item Most hardware implementations are proprietary, i.e.\ the actual details are not publicly known.
+\end{itemize}
+This means that many simulators used in academia suffer a hit on their accuracy.
+
+Most GPU simulators are cycle-level, meaning that they simulate the hardware at the clock cycle level.
+Some contemporary examples are Barra~\cite{barra}, GPUOcelot~\cite{ocelot}, Multi2Sim~\cite{multi2sim}, gem5~\cite{gem5}, GPGPU-Sim~\cite{gpgpu-sim}, and its derivative AccelSim~\cite{accelsim}.
+
+\subsection{GPU Code}\label{subsec:gpu-code}
+The typical GPU uses a two-step compilation process:
+\begin{enumerate}
+    \item High-level code is compiled to an intermediate representation, which is defined by the vendor.
+    Often, this intermediate representation is referred to as the \textit{virtual Instruction Set Architecture} (vISA).
+    For NVIDIA GPUs, this vISA is called PTX (Parallel Thread Execution).
+    The PTX format is thoroughly documented, and remains relatively stable across GPU generations, which makes it a good target for simulators.
+    \item The vISA code is compiled to the actual hardware instructions, referred to as the \textit{machine Instruction Set Architecture} (mISA).
+    This just-in-time compilation step is done at runtime.
+    For NVIDIA GPUs, this mISA is called SASS (Source and Assembly).
+    Compared to the PTX format, SASS is very poorly documented, and undergoes changes with every new GPU generation.
+\end{enumerate}
+
+As Jain et al.~\cite{sim-method} point out, the choice of which ISA to simulate can have an impact on the accuracy of the simulation results.
+They compared the accuracy of simulating at the PTX level to simulating at the SASS level when using the GPGPU-Sim simulator.
+From the workloads they analyzed, most tend to have a better accuracy on the mISA level.
+
+When simulating SASS code, GPGPU-Sim translates the instructions to a new format, called PTXPlus.
+This PTXPlus format is a 1:1 representation of the GT200 SASS code, but translated to resemble PTX in syntax.
+
+\section{Improving simulation speed}\label{sec:improving-simulation-speed}
+However, simulation is not without its drawbacks.
+The main issue is that simulation comes with a very large overhead compared to running algorithms on the actual hardware.
+This overhead is so large that applications that would take only about an hour on real hardware could easily take upwards of a century~\cite{pks}.
+Additionally, the accuracy of the simulation is often lower than that of the real hardware.
+
+Some research has gone into improving the speed of GPU simulation.
+As most GPU workloads consist of a large number of kernels, sampling a subset of these kernels can be used to speed up the simulation.
+Techniques like Principal Kernel Analysis~\cite{pks} and Sieve~\cite{sieve} have been developed to identify which kernels to simulate, and how to generalize the results.
+
+This gives us the general outline of the simulation process:
+\begin{enumerate}
+    \item Profile the workload on real hardware, to both gather performance numbers and create instruction-level traces.
+    For this, we will use NVIDIA's Nsight Compute~\cite{nsight} and NVBit~\cite{nvbit}.
+    \item Use these performance numbers, together with a sampling method, to identify which kernels to simulate.
+    \item Simulate the traces of these selected kernels on the simulator, gathering performance numbers.
+    Our simulator of choice is Accel-Sim~\cite{accelsim}.
+    \item Use these performance numbers to predict the performance of the entire workload.
+\end{enumerate}
+
+However, this methodology of simulation can cause another drop in the accuracy of the simulation.
+The performance of a kernel can be influenced by the kernels that run before and after it.
+In this case, we will focus on the cache state of the GPU\@.
+
+\section{The cold-start problem}\label{sec:the-cold-start-problem}
+The cold-start problem is a problem that arises due to sampling, both in CPU and GPU\@.\footnote{As we focus on GPU simulation, we will refer to units of execution as kernels. In CPU simulation, these might be functions or basic blocks.}
+Each kernel modifies the state of the caches by executing memory instructions (e.g.\ loads and stores).
+When we sample the workload to select only a subset of the kernels, there is a large chance that we will choose only intermittent kernels.
+This means that the state of the caches between kernel invocations will not reflect the actual hardware state.
+
+Suppose a workload consists of four consecutive kernels; A, B, C, and D\@.
+If kernel A were to be an initializing kernel, readying data for the other kernels, then it might also warm up the caches, filling them with data.
+This means that kernel B, which might reuse a lot of that data, might not suffer the latency of its memory instructions, as it would only have to fetch the data from the cache and not DRAM\@.
+However, if we were to only sample kernel B, each cache hit might turn into a miss, drastically reducing the IPC of the kernel.
+
+This problem is known as the cold-start problem, and it can have a significant impact on the accuracy of the simulation.
+It also gives us our research question: \textit{how big is the impact of the cold-start problem (both in hardware and simulation), and can we mitigate it?}
+
+\subsection{Quantifying}\label{subsec:quantifying}
+In \cref{ch:hw-analysis}, we will quantify the cold-start problem in hardware.
+We will do this by running a set of benchmarks on real hardware, and then simulating a subset of these (the most promising ones).
+The benchmarks range from machine learning inference to graph traversal and molecular simulation.
+Each of these benchmarks is run twice; once normally, and once with a forced cold start.
+We force the cold starts by flushing the caches between every pair of kernels.
+
+By doing this, we show that the cold-start problem exists in GPU hardware, and that it can have a significant impact on the performance of the workload.
+We also look at the impact of the cold-start problem when taking into account each kernel's weight (i.e.\ what portion of the workload it represents).
+Additionally, found that the cold-start problem is tied to the degree of inter-kernel data reuse, which we formalize in \cref{sec:data-reuse}.
+From this data, we select the following workloads:
+\begin{itemize}
+    \item \textbf{DCT}, from the CUDA samples;
+    \item \textbf{OceanFFT}, from the CUDA SDK; and
+    \item \textbf{3D-UNet inference}, a machine learning benchmark from MLPerf~\cite{mlperf}.
+\end{itemize}
+These are selected based both on how much they were impacted by the cold-start problem, and by their feasible runtime in the simulator (for 3D-UNet we limited the execution to the first 130 kernels).
+
+After profiling using the NVBit tool that comes with AccelSim, we will simulate these workloads, analyzing the results in \cref{ch:sim-analysis}.
+Each workload will be run twice again, so that we can compare the performance impact of the cold-start problem on these workloads.
+The main conclusion will be that the cold-start problem does exist in the simulator as well, albeit with a very different impact.
+Overall, the simulator will suffer less from the cold-start problem than the hardware, but the impact will still be noticeable.
+
+\subsection{Mitigating}\label{subsec:mitigating}
+After quantifying the cold-start problem, we will look at ways to mitigate it.
+\Cref{ch:mitigation} will focus on three avenues we've looked into:
+\begin{description}
+    \item[Cache warming:] in order to force the cache state to be accurate, we can simulate each preceding kernel.
+    However, this is not a feasible solution, as it will increase the simulation time by a lot.
+    This is what we tried to avoid by using sampling.
+    \item[Selected simulation:] only the kernels directly before a selected kernel will have a significant impact on the cache state.
+    Additionally, only the memory instructions do actually modify the cache state.
+    From these two observations, we will simulate only the memory instructions of a low number of preceding kernels.
+    The main conclusion here will be that simulating the memory instructions of a single preceding kernel will give us a very high accuracy (often up to 99\%) at a rather low computational cost.
+    \item[Correction factors:] using certain factors we can compute a factor to correct the performance numbers of a cold-started kernel.
+    The main idea will be to find a subtractive factor for the number of cycles.
+    % TODO: conclusion for correction factor???
+\end{description}
+
+\section{Conclusions}\label{sec:conclusions}
+In this thesis, we will quantify the cold-start problem in GPU hardware and simulation.
+We will show that the cold-start problem exists in both hardware and simulation, and that it can have a significant impact on the performance of a workload.
+We will also show that this problem is tied to the degree of inter-kernel data reuse.
+Additionally, we will show that the cold-start problem is less severe in simulation than in hardware.
+Finally, we will look into ways to mitigate the cold-start problem, exploring three different avenues.
+The first avenue, simulating all preceding kernels, will be discarded as it is not feasible, especially for larger workloads.
+The second avenue, simulating only the memory instructions of a single preceding kernel, will be shown to give a very high accuracy at a low computational cost.
+The third avenue, using correction factors, will be shown to be a viable alternative to the second avenue. % TODO conclusion???
