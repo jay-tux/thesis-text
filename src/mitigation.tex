@@ -22,7 +22,7 @@ In \cref{sec:trace-info,sec:kernel-selection}, we will focus on the second optio
 
 \FloatBarrier
 \section{Gathering trace info}\label{sec:trace-info}
-The AccelSim\cite{accelsim} tool comes with an NVBIT\cite{nvbit} tool and post-processor which are already used to generate the instruction-level traces that are eventually fed to the simulator itself.
+The AccelSim\cite{accelsim} tool comes with an NVBit\cite{nvbit} tool and post-processor which are already used to generate the instruction-level traces that are eventually fed to the simulator itself.
 By default, this tool generates a number of files:
 \begin{itemize}
     \item \verb|traces/kernelslist|: a list of all kernels that were run, with their respective kernel IDs.
@@ -36,7 +36,10 @@ The original NVBIT tool reports for each instruction it instruments whether it i
 We use that information to filter out the instructions we need.
 
 As with the original traces, we need to post-process each memory trace before feeding it to the simulator.
-By using the same format as the original tool, we ensure that the existing post-processor can also handle these new files.
+By using the same format as the original tool, we ensure that the existing post-processor can also handle these new files\footnote{
+    \textit{Note:} AccelSim by default uses a compressed format for memory instructions, taking up less disk space in their traces.
+    However, due to time constraints, we have elected to work with the uncompressed format, which takes up more disk space.
+}.
 
 \FloatBarrier
 \section{Kernel selection}\label{sec:kernel-selection}
@@ -89,10 +92,6 @@ From these figures, we can quickly deduce that even a single preceding kernel ca
 
 An additional striking detail is that more kernels does not always imply a higher accuracy.
 This might be due to some non-determinism in the simulator.
-
-% NOTE: get full mem trace requires non-compressed traces, takes immensely more disk space (see table III in Accelsim paper)
-\textit{Note:} AccelSim by default uses a compressed format for memory instructions, taking up less disk space in their traces.
-However, due to time constraints, we have elected to work with the uncompressed format, which takes up more disk space.
 
 \FloatBarrier
 

@@ -1,1 +1,103 @@
 \chapter{The Cold-Start Problem}\label{ch:the-cold-start-problem}
+\section{Caches}\label{sec:caches}
+The cold-start problem is inherently tied to caches.
+Caches are a hardware component that is used to improve the performance of a computer system.
+They attempt to mitigate the latency of accessing data from main memory (DRAM) by storing a subset of the data that is recently accessed.
+Older research has shown that many applications exhibit temporal locality, meaning that if a piece of data is accessed once, it is likely to be accessed again in the near future.
+Caches exploit this property by storing recently accessed data in a small, fast memory that is closer to the processor (in this case, the GPU) than the main memory.
+
+When the GPU issues a memory request (often due to a load or store instruction), the cache controller checks if the data is present in the cache.
+If it is, and the data is not stale, the cache controller returns the data to the GPU, avoiding the expensive DRAM access.
+If the data is not present in the cache, the cache controller must fetch the data from the main memory.
+Modern GPUs have multiple levels of cache, each with their own size, latency, and other parameters.
+Often, the caches are organized in a hierarchy, where closer caches (which have a lower latency), are smaller.
+We will mainly focus on the last-level cache (LLC), which is the cache closest to the DRAM\@.
+
+\subsection{Cold Caches}\label{subsec:cold-caches}
+Initially, the caches of a GPU are cold, meaning that they do not contain any data.
+This means that the first time a new piece of data is accessed, it will not be present in the cache, and the GPU must fetch it from DRAM\@.
+This causes a significant latency penalty, as the latency of accessing DRAM is much higher than the latency of accessing the LLC\@.
+From then on, repeat accesses to the same data will be much faster, as the data will be present in the cache.
+
+The benefit of caches is that they can persist data between kernel invocations.
+This implies that a kernel can ``warm up'' the caches by accessing all data that the next kernel might need.
+
+\begin{figure}[hbt]
+    \centering
+    \append{figures/coldstart/normal_exec}
+    \caption{Caches example}
+    \label{fig:normal-exec}
+\end{figure}
+
+In~\cref{fig:normal-exec}, we see an example of two kernels, and how caching can improve performance.
+This small example abstracts away of how the caches decide which cache line is used for which memory address.
+The first kernel executes some memory instructions, which the second one builds upon.
+The full ``code'' executed (we used a simplified representation of the memory instructions) is as follows:
+\begin{minted}[linenos]{nasm}
+    ; Kernel 1:
+    ld 0x00AA ; performs a load
+    ld 0x11BB
+    st 0x00AA ; performs a store
+    st 0x22CC
+    ld 0x33DD
+
+    ; Kernel 2:
+    ld 0x33DD
+    ld 0x11BB
+    st 0x00AA
+\end{minted}
+
+The figure shows for each instruction the cache state before and after the execution (if the cache state changed).
+We can clearly see that, for kernel 1, the caches start out cold, but get warmed up by the unique memory accesses (\verb|0x00AA|, \verb|0x11BB|, \verb|0x22CC|, and \verb|0x33DD|).
+Because the cache couldn't supply us with the data, we call this a cache miss.
+More specifically, since we access a memory location that had not been accessed before, it is called a cold miss.
+Each cache miss causes a DRAM access, costing us precious cycles.
+However, the repeat access of \verb|0x00AA| on line 4 (\mintinline{nasm}{st 0x00AA}) goes only through the cache, speeding up the access.
+
+Because we don't flush the caches between two kernel invocations in this example, kernel 2 can benefit from the cache state that kernel 1 left behind.
+At this point, we have no cold misses anymore, as all memory locations that are accessed have been accessed before.
+However, line 10 causes another miss, as the cache line associated with \verb|0x33DD| was overwritten by the access of \verb|0x11BB| on line 9, causing a conflict miss.
+These conflict misses occur when multiple memory locations are mapped to the same cache line, and one of them is evicted from the cache.
+
+These evictions are a normal part of cache operation.
+The controller will choose a line to remove from the cache based on its eviction policy.
+Some common cache eviction policies are\footnote{Cache eviction policies only have an effect when a memory location can be placed in one of multiple cache lines (it has an associativity of at least 2). If a memory location can be placed in only one cache line, it has to replace that specific cache line.}:
+\begin{description}
+    \item[LRU (Least Recently Used)] The line that has not been accessed for the longest time is evicted.
+    This choice is based on the assumption that, if a line has not been accessed for a long time, it is less likely to be accessed in the near future.
+    \item[LFU (Least Frequently Used)] The line that has been accessed the least amount of times is evicted.
+    \item[FIFO (First In, First Out)] The line that has been in the cache the longest is evicted.
+    \item[RR (Random Replacement)] A random line is evicted.
+\end{description}
+
+For simplicity, we will assume that all instructions are run serially, i.e.\ no two instructions are issued at the same time.
+Additionally, we will assume that a cache hit takes 180 cycles, and a DRAM access takes 250 cycles (which is close to what the simulator will use).
+From these numbers we can compute how many cycles each kernel will take to execute.
+For kernel 1, we have 4 misses and 1 hit, resulting in a total of 1180 cycles; while kernel 2 can be executed in 610 cycles.
+
+\section{The Problem}\label{sec:the-problem}
+As we discussed in \cref{sec:kernel-sampling}, most kernels in a workload won't be simulated.
+This means that a lot of intermittent kernels will never be run, which might impact the cache states.
+In effect, we can assume that each kernel will be run with cold caches, as the kernels right before a kernel might not have been run.
+
+\begin{figure}[hbt]
+    \centering
+    \append{figures/coldstart/cold_start_exec}
+    \caption{Sampled example}
+    \label{fig:flush-exec}
+\end{figure}
+
+In~\cref{fig:flush-exec}, we revisit the same example, assuming that the sampling method only selected kernel 2 to be simulated.
+Below is the code excerpt for kernel 2:
+\begin{minted}[linenos,firstnumber=8]{nasm}
+    ; Kernel 2:
+    ld 0x33DD
+    ld 0x11BB
+    st 0x00AA
+\end{minted}
+
+This means that kernel 1 was not run, and kernel 2 can not benefit from the cache state that kernel 1 left behind.
+This causes all memory accesses to be cold misses, as the caches are cold.
+Again, we can compute the number of cycles kernel 2 will take to execute.
+This time, we have 3 misses, resulting in a total of 750 cycles (taking into account our assumptions from before).
+This is a significant increase in execution time compared to the 610 cycles we had before (about 23\%).

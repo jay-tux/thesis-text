@@ -15,11 +15,14 @@
 \usepackage{hyperref}
 \usepackage{placeins}
 \usepackage{arydshln}
+\usepackage{tikz}
+\usepackage[outputdir=../out]{minted}
 \usepackage[noabbrev]{cleveref}
 
 \def\mathdefault#1{#1}
 \everymath=\expandafter{\the\everymath\displaystyle}
-\makeatletter\@ifpackageloaded{underscore}{}{\usepackage[strings]{underscore}}\makeatother
+\makeatletter\@ifpackageloaded{underscore}{}{\usepackage[strings]{underscore}
+\usepackage{listings}}\makeatother
 
 \pgfplotsset{compat=1.17}
 \usetikzlibrary{arrows.meta} %define styles in graph
