@@ -22,7 +22,7 @@ In \cref{sec:trace-info,sec:kernel-selection}, we will focus on the second optio
 
 \FloatBarrier
 \section{Gathering trace info}\label{sec:trace-info}
-The AccelSim\cite{accelsim} tool comes with an NVBit\cite{nvbit} tool and post-processor which are already used to generate the instruction-level traces that are eventually fed to the simulator itself.
+The AccelSim~\cite{accelsim} tool comes with an NVBit~\cite{nvbit} tool and post-processor which are already used to generate the instruction-level traces that are eventually fed to the simulator itself.
 By default, this tool generates a number of files:
 \begin{itemize}
     \item \verb|traces/kernelslist|: a list of all kernels that were run, with their respective kernel IDs.
@@ -98,7 +98,7 @@ This might be due to some non-determinism in the simulator.
 \section{Correction factor}\label{sec:correction-factor}
 
 Since the cold-start problem is inherently tied to the cache state, we should look at factors that can impact this state in order to find a correction factor.
-Tools like NVIDIA's Nsight Compute\cite{nsight} and NVBit\cite{nvbit} can provide detailed cache statistics, which might be used to compute this factor.
+Tools like NVIDIA's Nsight Compute~\cite{nsight} and NVBit~\cite{nvbit} can provide detailed cache statistics, which might be used to compute this factor.
 Some possible factors are:
 \begin{itemize}
     \item \textit{Profiler differences:} by profiling a workload twice, once with and once without flushing, one can see the impact of the cold-start problem in silicon.

@@ -9,7 +9,7 @@ Additionally, we can gather detailed metrics, like IPC, for each kernel in the w
 Each workload was profiled twice: once like it would run normally, and once with the caches flushed between kernel invocations.
 Nsight Compute supports this option by using the \verb|--cache-control=all| argument.
 To keep the runtime in check, we limited the execution to 20\thinspace000 kernels per workload.
-These experiments were run on an NVIDIA GeForce RTX 3080\cite{nvidia-wp}.
+These experiments were run on an NVIDIA GeForce RTX 3080~\cite{nvidia-wp}.
 This GPU has 68 SM cores, 6 MB of L2 cache.
 
 After profiling, we attempted to match each profiled non-flushed kernel with its flushed counterpart.
@@ -23,18 +23,18 @@ This proved easier said than done, as the kernel IDs were not consistent between
     \label{fig:ipc_diff}
 \end{figure}
 
-From this initial analysis, the most interesting workloads seemed to be PyTorch DCGAN\cite{dcgan} and Gunrock\cite{gru} (on road traversal), from the Cactus\cite{cactus} suite.
+From this initial analysis, the most interesting workloads seemed to be PyTorch DCGAN~\cite{dcgan} and Gunrock~\cite{gru} (on road traversal), from the Cactus~\cite{cactus} suite.
 Below is a full list of all analyzed workloads:
 \begin{itemize}
-    \item Gromacs\cite{gromacs} and LAMMPS\cite{LAMMPS} (with both rhodo (LMR) and colloid (LMC) inputs); two molecular simulation workloads,
+    \item Gromacs~\cite{gromacs} and LAMMPS~\cite{LAMMPS} (with both rhodo (LMR) and colloid (LMC) inputs); two molecular simulation workloads,
     \item Gunrock on both road (GRU) and social networks (GST),
-    \item DCGAN, neural style transform (NST)\cite{nst}, reinforcement learning (RFL), spatial transformer (SPT)\cite{spt} and language translation (LGT) from PyTorch, and
+    \item DCGAN, neural style transform (NST)~\cite{nst}, reinforcement learning (RFL), spatial transformer (SPT)~\cite{spt} and language translation (LGT) from PyTorch, and
     \item The following MLCommons benchmarks (from their MLPerf® Inference v2.0 collection):
     \begin{itemize}
-        \item The ResNet50 model\cite{resnet50},
+        \item The ResNet50 model~\cite{resnet50},
         \item Both MobileNet and ResNet34 variants of the SSD model,
-        \item The Bidirectional Encoder Representations from Transformers (BERT)\cite{bert}, and
-        \item The 3D U-Net model\cite{3d-unet}
+        \item The Bidirectional Encoder Representations from Transformers (BERT)~\cite{bert}, and
+        \item The 3D U-Net model~\cite{3d-unet}
     \end{itemize}
     \item Four inputs to the 8x8 DCT implementation in the CUDA Samples (each labeled with their respective input).
 \end{itemize}
@@ -46,7 +46,7 @@ However, for some of the more interesting workloads (like DCG, GRU, NST, and DCT
 
 \section{Weighting kernels}\label{sec:weighting-kernels}
 While this shows that the problem does exist in hardware, it might not relate to how modern simulation is carried out.
-Modern techniques like Sieve\cite{sieve} use clustering to select a subset of kernels to simulate, generalizing the results to the entire workload.
+Modern techniques like Sieve~\cite{sieve} use clustering to select a subset of kernels to simulate, generalizing the results to the entire workload.
 In these sampling techniques, many kernels are clustered together based on characteristics.
 The process then selects a single kernel from each cluster to simulate, using those results are representative for the entire cluster.
 To combine the clusters and compute a final result, each cluster's result is weighted by its instruction count, relative to the full workload:

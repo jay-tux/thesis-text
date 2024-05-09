@@ -1,14 +1,14 @@
 \chapter{Literature Review}\label{ch:literature-review}
 The topic of GPU simulation has been studied extensively, albeit not as extensively as CPU simulation.
 Before continuing with the cold-start problem, we will shortly discuss the current state of GPU simulation.
-The three main papers this thesis is based on are \textit{AccelSim}\cite{accelsim}, \textit{Principal Kernel Analysis}\cite{pks}, and \textit{Sieve}\cite{sieve}.
+The three main papers this thesis is based on are \textit{AccelSim}~\cite{accelsim}, \textit{Principal Kernel Analysis}~\cite{pks}, and \textit{Sieve}~\cite{sieve}.
 The first of these provides the simulator we use, while the latter two provide the kernel sampling techniques that are commonly used to speed up simulation.
 
 \section{GPU Simulation}\label{sec:gpu-simulation}
-As outlined in the AccelSim paper\ \cite{accelsim}, most of the ISA and architecture changes in GPU innovation are usually closed off by the industry.
+As outlined in the AccelSim paper\ ~\cite{accelsim}, most of the ISA and architecture changes in GPU innovation are usually closed off by the industry.
 This makes it harder for research to keep up with industry changes.
 
-The proposed simulator AccelSim, which is based on the older GPGPU-Sim simulator\cite{gpgpu-sim}.
+The proposed simulator AccelSim, which is based on the older GPGPU-Sim simulator~\cite{gpgpu-sim}.
 It consists of four main components:
 \begin{enumerate}
     \item The flexible frontend;
@@ -86,7 +86,7 @@ To avoid this, the simulator only ticks the active components.
 
 \section{Kernel Sampling}\label{sec:kernel-sampling}
 Simulation has a lot of benefits; like the inherently configurable design, the flexibility, and the ability to reconfigure hardware to analyze model changes, but it also has the downside of its inherent enormous overhead.
-The authors of the PKA paper\cite{pks} show that workloads which would take mere seconds on real hardware, could take upwards of a century on a simulator.
+The authors of the PKA paper~\cite{pks} show that workloads which would take mere seconds on real hardware, could take upwards of a century on a simulator.
 This drawback means that each simulation platform must limit the number of instructions.
 
 Many approaches attempt to restrict the workload and/or platform to speed up simulation.
@@ -173,7 +173,7 @@ According to the authors, a value of $s = 0.25$ should be fine.
 
 \section{Improving PKA}\label{sec:improving-pka-sieve}
 While PKA is a very powerful technique, leading to drastically lower simulation times while still maintaining a high accuracy for most application, it is not perfect yet.
-The main issues with PKA, as outlined in the Sieve paper\cite{sieve}, are:
+The main issues with PKA, as outlined in the Sieve paper~\cite{sieve}, are:
 \begin{itemize}
     \item Since the PKS phase assumes the same execution time for all invocations in a cluster, there is a very large variability in cycle count.
     \item The heavy-duty profiling phase is very time-consuming.
@@ -204,7 +204,7 @@ The authors found that $\theta = 0.4$ is a good compromise.
 To improve the variability of tier 3, which allows for a lot of variability, Kernel Density Estimation (KDE) is used.
 This allows to minimize the number of strata while also limiting the variability in instruction count (using the same threshold $\theta$).
 
-Using this methodology, the authors found that Sieve was able to fit most kernel invocations from the MLPerf\cite{mlperf} and Cactus\cite{cactus} workloads into tiers 1 and 2.
+Using this methodology, the authors found that Sieve was able to fit most kernel invocations from the MLPerf~\cite{mlperf} and Cactus~\cite{cactus} workloads into tiers 1 and 2.
 
 \subsection{Selection}\label{subsec:selection}
 When selecting a representative kernel, Sieve makes a decision based on the tier of the stratum:
