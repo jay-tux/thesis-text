@@ -39,7 +39,7 @@ Below is a full list of all analyzed workloads:
     \item Four inputs to the 8x8 DCT implementation in the CUDA Samples (each labeled with their respective input).
 \end{itemize}
 
-In \cref{fig:ipc_diff}, you can see the relative IPC difference for each kernel in the Cactus and MLPerf workloads.
+In \Cref{fig:ipc_diff}, you can see the relative IPC difference for each kernel in the Cactus and MLPerf workloads.
 For the majority of workloads, the IPC difference is rather small (at most 10\%).
 However, for some of the more interesting workloads (like DCG, GRU, NST, and DCT), we can find IPC differences of up to 70\% for some kernels.
 \FloatBarrier
@@ -71,8 +71,8 @@ In order to get a better view of the impact of the cold start problem, we have a
     \label{fig:weight_ipc_dct}
 \end{figure}
 
-In \cref{fig:weight_ipc_diff}, you can see the result of this analysis for the Cactus and MLPerf workloads.
-The results for the DCT workload (with its same four input images) is shown in \cref{fig:weight_ipc_dct}.
+In \Cref{fig:weight_ipc_diff}, you can see the result of this analysis for the Cactus and MLPerf workloads.
+The results for the DCT workload (with its same four input images) is shown in \Cref{fig:weight_ipc_dct}.
 We have set four thresholds for the relative IPC difference (5\%, 10\%, 15\%, and 20\%).
 For each of these thresholds, we have summed up the weights of all kernels where the IPC difference is at least that much.
 This means that e.g.\ for the GRU workload, approximately 16\% of the entire workload suffers from a difference of at least 5\%.
@@ -106,14 +106,14 @@ For each kernel, we have profiled all memory instructions and extracted the uniq
     \label{fig:recg_reuse}
 \end{figure}
 
-In \cref{fig:dct_reuse}, you can see the data reuse ratio for the DCT workload.
+In \Cref{fig:dct_reuse}, you can see the data reuse ratio for the DCT workload.
 We have analyzed both the forward and backward data reuse for each kernel:
 \begin{itemize}
-    \item \textbf{Forward data reuse:} the amount of unique memory addresses in kernel $k_{i-1}$ that are also present in kernel $k_{i}$ (as seen in \cref{fig:dct_forward_reuse}); i.e.
+    \item \textbf{Forward data reuse:} the amount of unique memory addresses in kernel $k_{i-1}$ that are also present in kernel $k_{i}$ (as seen in \Cref{fig:dct_forward_reuse}); i.e.
     \begin{align}
         \frac{|\text{footprint } k_{i-1} \cap \text{footprint } k_i|}{|\text{footprint } k_{i-1}|}
     \end{align}
-    \item \textbf{Backward data reuse:} the amount of unique memory addresses in kernel $k_{i}$ that are also present in kernel $k_{i-1}$ (as seen in \cref{fig:dct_backward_reuse}); i.e.
+    \item \textbf{Backward data reuse:} the amount of unique memory addresses in kernel $k_{i}$ that are also present in kernel $k_{i-1}$ (as seen in \Cref{fig:dct_backward_reuse}); i.e.
     \begin{align}
         \frac{|\text{footprint } k_{i-1} \cap \text{footprint } k_i|}{|\text{footprint } k_i|}
     \end{align}
@@ -122,7 +122,7 @@ We have analyzed both the forward and backward data reuse for each kernel:
 When looking at the DCT workload, most kernels have a very high degree of data reuse, both backward and forward.
 As we analyzed before, this workload suffers heavily from the cold-start problem (in hardware).
 
-For contrast, we have also analyzed \verb|recursiveGaussian| (from the CUDA SDK); as you can see in \cref{fig:recg_reuse}.
+For contrast, we have also analyzed \verb|recursiveGaussian| (from the CUDA SDK); as you can see in \Cref{fig:recg_reuse}.
 Roughly half of the kernels hit 50\% of data reuse (in either direction), while the other half has a much lower degree of data reuse.
 This is also reflected in the IPC difference due to the cold-start problem: only about 1.3\% of the workload suffers from at least 5\% IPC difference.
 
@@ -133,7 +133,7 @@ The notion of data reuse, more specifically forward data reuse, will be used in 
 From this, we can conclude that the cold-start problem does exist in hardware.
 Additionally, we noticed that the problem changes severity when we take each relative kernel's instruction count into account, giving us other workloads to focus on.
 Finally, we suspected that workloads with high inter-kernel data reuse would suffer more from the cold-start problem.
-This was confirmed by the DCT workload, as we have shown in \cref{fig:dct_reuse}.
+This was confirmed by the DCT workload, as we have shown in \Cref{fig:dct_reuse}.
 
 In the next chapter, we will be analyzing the impact of the cold-start problem in the AccelSim simulator.
 We'll mostly use the DCT and 3D U-Net workloads for this, as well as the OceanFFT one.

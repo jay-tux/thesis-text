@@ -17,7 +17,7 @@ Taking this all into account means that we see a few options for mitigation:
     There are different factors that we could analyze ahead-of-time to compute this factor.
 \end{itemize}
 
-In \cref{sec:trace-info,sec:kernel-selection}, we will focus on the second option, opting to simulate memory instructions in order to artificially warm up the caches.
+In \Cref{sec:trace-info,sec:kernel-selection}, we will focus on the second option, opting to simulate memory instructions in order to artificially warm up the caches.
 \Cref{sec:correction-factor} will focus on the third option, offering some possible factors that could be used to compute a correction factor.
 
 \FloatBarrier
@@ -36,6 +36,7 @@ The original NVBIT tool reports for each instruction it instruments whether it i
 We use that information to filter out the instructions we need.
 
 As with the original traces, we need to post-process each memory trace before feeding it to the simulator.
+This post-processing step sorts the instructions by their thread block, allowing the simulator to easily access the next instruction.
 By using the same format as the original tool, we ensure that the existing post-processor can also handle these new files\footnote{
     \textit{Note:} AccelSim by default uses a compressed format for memory instructions, taking up less disk space in their traces.
     However, due to time constraints, we have elected to work with the uncompressed format, which takes up more disk space.
@@ -45,7 +46,7 @@ By using the same format as the original tool, we ensure that the existing post-
 \section{Kernel selection}\label{sec:kernel-selection}
 In order to warm up the simulator's caches, we will be simulating the memory instructions from preceding kernels.
 However, this is once again a trade-off: the more kernels we use to warm up the caches, the more accurate the simulation will be, but the longer it will take.
-We have selected four kernels from the DCT8x8 workload with high IPC differences, as shown in \cref{fig:dct_kernels}.
+We have selected four kernels from the DCT8x8 workload with high IPC differences, as shown in \Cref{fig:dct_kernels}.
 
 \begin{figure}
     \centering
@@ -61,7 +62,7 @@ For each of these kernels, we used multiple simulations:
     \item \textbf{Partial memory warmup:} the memory instructions of up to 10 preceding kernels are simulated.
 \end{itemize}
 
-\begin{figure}
+\begin{figure}[t]
     \centering
     \appendW{./figures/simulated/kernel-11-abs.pgf}{0.47}
     \appendW{./figures/simulated/kernel-13-abs.pgf}{0.47}
@@ -72,7 +73,7 @@ For each of these kernels, we used multiple simulations:
     \label{fig:mitig_abs}
 \end{figure}
 
-\begin{figure}
+\begin{figure}[t]
     \centering
     \appendW{./figures/simulated/kernel-11-acc.pgf}{0.47}
     \appendW{./figures/simulated/kernel-13-acc.pgf}{0.47}
@@ -83,7 +84,7 @@ For each of these kernels, we used multiple simulations:
     \label{fig:mitig_acc}
 \end{figure}
 
-In \cref{fig:mitig_abs,fig:mitig_acc}, we have plotted the results of these simulations.
+In \Cref{fig:mitig_abs,fig:mitig_acc}, we have plotted the results of these simulations.
 For each kernel, we have plotted the result of \textit{perfect warmup} as a black line, this was the golden reference we tried to reach.
 Additionally, the light-brown line represents \textit{full memory warmup}, while the blue line represents \textit{partial memory warmup}.
 Both raw IPC values and accuracy (in percents) are shown.
@@ -94,7 +95,81 @@ An additional striking detail is that more kernels does not always imply a highe
 This might be due to some non-determinism in the simulator.
 
 \FloatBarrier
+\subsection{Full Memory Warmup}\label{subsec:full-memory-warmup}
+A striking result from the figures above, is that the \textit{full memory warmup} approach does not yield 100\% accuracy.
+The cause of this might be the ordering of instructions; since we remove all non-memory instructions, they might get executed in a different order.
+This could lead to different cache states, and thus different IPC values.
 
+In the example in \Cref{fig:example2a}, we have two threads executing.
+Each of these has a different pattern: one starts with some memory instructions, performing arithmetic afterward, while the other does the opposite.
+We assume that each instruction takes the exact same time, ignoring latencies as well.
+This causes all memory instructions to be executed serially, resulting in a certain cache state.
+\begin{figure}[hb]
+    \centering
+    \begin{minipage}[!]{0.45\textwidth}
+        \begin{minted}[linenos]{nasm}
+            ; Thread 1
+            ld 0x0001
+            ld 0x0002
+            ld 0x0003
+            ; arithmetic
+            ; arithmetic
+            ; arithmetic
+        \end{minted}
+    \end{minipage}
+    \begin{minipage}[!]{0.45\textwidth}
+        \begin{minted}[linenos]{nasm}
+            ; Thread 2
+            ; arithmetic
+            ; arithmetic
+            ; arithmetic
+            ld 0x000A
+            ld 0x0014
+            ld 0x0028
+        \end{minted}
+    \end{minipage}
+    \appendW{figures/simulated/interleaving-1}{0.66}
+    \caption{Interleaving example}
+    \label{fig:example2a}
+\end{figure}
+
+When we execute only the memory instructions in the ``trace'' above, we get a whole different execution.
+See \Cref{fig:example2b} for the result of that execution.
+\begin{figure}[ht]
+    \centering
+    \begin{minipage}[!]{0.45\textwidth}
+        \begin{minted}[linenos]{nasm}
+            ; Thread 1
+            ld 0x0001
+            ld 0x0002
+            ld 0x0003
+        \end{minted}
+    \end{minipage}
+    \begin{minipage}[!]{0.45\textwidth}
+        \begin{minted}[linenos]{nasm}
+            ; Thread 2
+            ld 0x000A
+            ld 0x0014
+            ld 0x0028
+        \end{minted}
+    \end{minipage}
+    \appendW{figures/simulated/interleaving-2}{0.45}
+    \caption{Interleaving example - memory only}
+    \label{fig:example2b}
+\end{figure}
+
+When we compare the final cache state of each execution (see also \Cref{fig:example2_final}), we can see a clear difference.
+This can impact the performance of the next kernel: for the first execution (a perfect warmup), accessing \verb|0x000A| would result in a cache hit, while \verb|0x0002| would miss.
+The opposite happens when we only simulate memory instructions (full memory warmup, like in execution 2).
+This can explain the slight inaccuracy we see for full memory warmup.
+\begin{figure}[h]
+    \centering
+    \appendW{figures/simulated/interleaving-delta}{0.45}
+    \caption{Interleaving example - cache state differences}
+    \label{fig:example2_final}
+\end{figure}
+
+\FloatBarrier
 \section{Correction factor}\label{sec:correction-factor}
 
 Since the cold-start problem is inherently tied to the cache state, we should look at factors that can impact this state in order to find a correction factor.
@@ -106,7 +181,7 @@ Some possible factors are:
     \item \textit{Profiler cache statistics:} a detailed profiler can provide statistics about hits and misses, which in turn could be used to compute the correction factor.
     \item \textit{Degree of data reuse:} by using an instruction-level trace, it is possible to extract all memory references.
     The ratio $\frac{\text{total memory references}}{\text{unique memory references}}$ could inform us about the cache state.
-    We have outlined the main ideas of \textit{forward data reuse} in \cref{sec:data-reuse} (that section also includes the notion of \textit{backward data reuse}, but that will prove not as useful here).
+    We have outlined the main ideas of \textit{forward data reuse} in \Cref{sec:data-reuse} (that section also includes the notion of \textit{backward data reuse}, but that will prove not as useful here).
     \item \textit{The DRAM delay:} the difference in cycles between a cache hit and a DRAM access could be useful to get an idea of the amount of cycles lost due to cold-start.
     \item \textit{The number of memory controllers:} since each memory controller can issue requests in parallel, the number of controllers might impact the cache state, as well as the cost of a cache miss.
     \item \textit{L2 miss rate:} this value could be used together with the \textit{number of memory instructions}.
@@ -122,12 +197,41 @@ Some possible factors are:
     \label{fig:ocean_mitig}
 \end{figure}
 
-We have gathered some of these factors in \cref{fig:dct_mitig} for a subset of the DCT workload.
+We have gathered some of these factors in \Cref{fig:dct_mitig} for a subset of the DCT workload.
 The kernel invocations for which a mitigation is required (kernels 11, 13, 114, and 115) are emphasized.
-In \cref{fig:ocean_mitig}, we have done the same for the OceanFFT workload (with its single high-impact kernel marked).
+In \Cref{fig:ocean_mitig}, we have done the same for the OceanFFT workload (with its single high-impact kernel marked).
 
 However, we have to be careful when finding a correction factor.
 Since some factors that could impact cache state (e.g.\ the number of cache evictions) are hardware- and platform-dependent, we could end up with a correction factor that only works for a specific platform.
+
+\subsection{A Possible Formula}\label{subsec:formula}
+Through analysis of the data, we have come up with a formula that allows use to compute a correction factor.
+This correction factor proved very effective, resulting in an average 95\% accuracy for the DCT workload.
+Especially for problematic kernels (kernels suffering from the cold-start problem), this correction factor succeeded in improving accuracy.
+
+The main goal is to compute a subtractive factor for the number of cycles, i.e.\ provide an upper bound on how many cycles could have been saved.
+To this end, we will use the following metrics, all of which can be gathered by simulating a single kernel and/or profiling the workload:
+\begin{itemize}
+    \item \textbf{Unique DRAM accesses:} we modified Accel-Sim to output each DRAM request.
+    By filtering these on unique values, we know the number of cold misses.
+    \item \textbf{Memory controller occupation:} since the memory controllers in the system are able to process requests in parallel, the number of controllers might impact the number of cycles lost due to latency.
+    Accel-Sim outputs their occupancy by default (the lines starting with\ \verb|dram[]|).
+    Importantly, we also take into account how evenly they are used; e.g.\ if a controller is used only half as much as another, we count it as half a controller.
+    \item \textbf{Cache line size:} the DRAM accesses contain byte-level memory addresses.
+    However, multiple consecutive addresses map to the same cache line, which might avoid some cold misses.
+    \item \textbf{Reuse factor:} we use the \textit{forward reuse factor} from the \emph{previous} kernel.
+    This value acts as a correction on the number of cold misses: if only a few memory addresses are reused, most cold misses aren't due to the cold-start problem.
+    \item \textbf{Latencies:} the number of cycles saved is directly related to the DRAM- and L2-latency of the system.
+\end{itemize}
+
+Combining all of these, we came up with the following formula:
+\begin{align}
+    IPC &= \frac{instructions}{cycles_f - \Delta} \\
+    \Delta &= \frac{accesses}{controllers * line} * reuse * (DRAM - L2)
+\end{align}
+Here, $IPC$ is the final (corrected) IPC value, $instructions$ is the number of dynamically executed instructions, $cycles_f$ is the number of cycles when simulating the kernel with cold caches (in flushed mode), and $\Delta$ is the correction factor.
+We use $accesses$ for the number of unique DRAM accesses, $controllers$ for the memory controller occupancy, $line$ for the size of a cache line, and $reuse$ for the (forward) reuse factor.
+$DRAM$ and $L2$ are the latencies of the respective memory regions.
 
 \FloatBarrier
 \section{Conclusion}\label{sec:mitigation-conclusion}
@@ -141,6 +245,7 @@ In this case, we have selected the memory instructions of preceding kernels and 
 Even for kernels that suffered a lot from the cold-start problem, we have shown that warming up using a single kernel has a drastic impact on the accuracy already.
 In many cases, a single kernel was enough to reach over 99\% accuracy.
 
+% TODO: rewrite
 Finally, we have looked into possible correction factors.
 Some possible factors that can be used to create a comprehensive function to compute a correction factor have been outlined.
 These factors range from L2 miss rate and DRAM delay to higher-level statistics about inter-kernel data reusability.

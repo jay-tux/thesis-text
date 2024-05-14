@@ -129,7 +129,7 @@ This problem is known as the cold-start problem, and it can have a significant i
 It also gives us our research question: \textit{how big is the impact of the cold-start problem (both in hardware and simulation), and can we mitigate it?}
 
 \subsection{Quantifying}\label{subsec:quantifying}
-In \cref{ch:hw-analysis}, we will quantify the cold-start problem in hardware.
+In \Cref{ch:hw-analysis}, we will quantify the cold-start problem in hardware.
 We will do this by running a set of benchmarks on real hardware, and then simulating a subset of these (the most promising ones).
 The benchmarks range from machine learning inference to graph traversal and molecular simulation.
 Each of these benchmarks is run twice; once normally, and once with a forced cold start.
@@ -137,7 +137,7 @@ We force the cold starts by flushing the caches between every pair of kernels.
 
 By doing this, we show that the cold-start problem exists in GPU hardware, and that it can have a significant impact on the performance of the workload.
 We also look at the impact of the cold-start problem when taking into account each kernel's weight (i.e.\ what portion of the workload it represents).
-Additionally, found that the cold-start problem is tied to the degree of inter-kernel data reuse, which we formalize in \cref{sec:data-reuse}.
+Additionally, found that the cold-start problem is tied to the degree of inter-kernel data reuse, which we formalize in \Cref{sec:data-reuse}.
 From this data, we select the following workloads:
 \begin{itemize}
     \item \textbf{DCT}, from the CUDA samples;
@@ -146,7 +146,7 @@ From this data, we select the following workloads:
 \end{itemize}
 These are selected based both on how much they were impacted by the cold-start problem, and by their feasible runtime in the simulator (for 3D-UNet we limited the execution to the first 130 kernels).
 
-After profiling using the NVBit tool that comes with AccelSim, we will simulate these workloads, analyzing the results in \cref{ch:sim-analysis}.
+After profiling using the NVBit tool that comes with AccelSim, we will simulate these workloads, analyzing the results in \Cref{ch:sim-analysis}.
 Each workload will be run twice again, so that we can compare the performance impact of the cold-start problem on these workloads.
 The main conclusion will be that the cold-start problem does exist in the simulator as well, albeit with a very different impact.
 Overall, the simulator will suffer less from the cold-start problem than the hardware, but the impact will still be noticeable.

@@ -1,0 +1,25 @@
+\begin{tikzpicture}
+    \node[] at (-3,-1) {{\large\underline{Thread 1}}};
+    \node[] at (-4,-2) (l1i1) {\texttt{ld 0x0001}};
+    \cacheF{-1.5}{-2}{}{0x0001}{}{}{l1}
+    \node[] at (-4,-4) (l2i1) {\texttt{ld 0x0002}};
+    \cacheF{-1.5}{-4}{}{0x0001}{0x0002}{}{l2}
+    \node[] at (-4,-6) (l3i1) {\texttt{ld 0x0003}};
+    \cacheF{-1.5}{-6}{}{0x0001}{0x0002}{0x0003}{l3}
+    \node[] at (-1.5, -8) (l4i1) {\texttt{(other)}};
+    \node[] at (-1.5, -10) (l5i1) {\texttt{(other)}};
+    \node[] at (-1.5, -12) (l6i1) {\texttt{(other)}};
+
+    \node[] at (3,-1) {{\large\underline{Thread 2}}};
+    \node[] at (1.5, -2) (l1i2) {\texttt{(other)}};
+    \node[] at (1.5, -4) (l2i2) {\texttt{(other)}};
+    \node[] at (1.5, -6) (l3i2) {\texttt{(other)}};
+    \node[] at (4,-8) (l4i2) {\texttt{ld 0x000A}};
+    \cacheF{1.5}{-8}{}{0x0001}{0x000A}{0x0003}{l4}
+    \node[] at (4,-10) (l5i2) {\texttt{ld 0x0014}};
+    \cacheF{1.5}{-10}{0x0014}{0x0001}{0x000A}{0x0003}{l4}
+    \node[] at (4,-12) (l6i2) {\texttt{ld 0x0028}};
+    \cacheF{1.5}{-12}{0x0028}{0x0001}{0x000A}{0x0003}{l4}
+
+    \draw[->,thin,gray] (0,-1.5) -- (0,-13.5);
+\end{tikzpicture}

@@ -30,8 +30,8 @@
     \end{subfigure}
 }
 
-\newcommand{\cache}[6]{ % x, y, line 1, line 2, line 3
-    \draw[dashed,thin,gray] (#1-0.6,#2+0.5)--(#1-0.6,#2-0.5);
+\newcommand{\cache}[6]{ % x, y, line 1, line 2, line 3, label
+    \draw[dashed,thin,gray] (#1-0.6,#2+0.55)--(#1-0.6,#2-0.55);
     \node[rectangle,draw,minimum width=2cm,minimum height=1.1cm] at (#1,#2) (#6) {};
     \node[] at (#1-0.8,#2+0.33) {0};
     \node[] at (#1-0.8,#2) {1};
@@ -39,6 +39,19 @@
     \node[] at (#1+0.2,#2+0.33) {{\scriptsize\texttt{#3}}};
     \node[] at (#1+0.2,#2) {{\scriptsize\texttt{#4}}};
     \node[] at (#1+0.2,#2-0.33) {{\scriptsize\texttt{#5}}};
+}
+
+\newcommand{\cacheF}[7]{ % x, y, line 1, line 2, line 3, line 4, label
+    \draw[dashed,thin,gray] (#1-0.6,#2+0.71)--(#1-0.6,#2-0.71);
+    \node[rectangle,draw,minimum width=2cm,minimum height=1.43cm] at (#1,#2) (#7) {};
+    \node[] at (#1-0.8,#2+0.49) {0};
+    \node[] at (#1-0.8,#2+0.16) {1};
+    \node[] at (#1-0.8,#2-0.16) {2};
+    \node[] at (#1-0.8,#2-0.49) {3};
+    \node[] at (#1+0.2,#2+0.49) {{\scriptsize\texttt{#3}}};
+    \node[] at (#1+0.2,#2+0.16) {{\scriptsize\texttt{#4}}};
+    \node[] at (#1+0.2,#2-0.16) {{\scriptsize\texttt{#5}}};
+    \node[] at (#1+0.2,#2-0.49) {{\scriptsize\texttt{#6}}};
 }
 
 \newcommand{\dram}[9]{ % y, command, pre l1, pre l2, pre l3, post l1, post l2, post l3, name

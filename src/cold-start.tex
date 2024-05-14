@@ -29,7 +29,7 @@ This implies that a kernel can ``warm up'' the caches by accessing all data that
     \label{fig:normal-exec}
 \end{figure}
 
-In~\cref{fig:normal-exec}, we see an example of two kernels, and how caching can improve performance.
+In~\Cref{fig:normal-exec}, we see an example of two kernels, and how caching can improve performance.
 This small example abstracts away of how the caches decide which cache line is used for which memory address.
 The first kernel executes some memory instructions, which the second one builds upon.
 The full ``code'' executed (we used a simplified representation of the memory instructions) is as follows:
@@ -61,7 +61,7 @@ These conflict misses occur when multiple memory locations are mapped to the sam
 
 These evictions are a normal part of cache operation.
 The controller will choose a line to remove from the cache based on its eviction policy.
-Some common cache eviction policies are\footnote{Cache eviction policies only have an effect when a memory location can be placed in one of multiple cache lines (it has an associativity of at least 2). If a memory location can be placed in only one cache line, it has to replace that specific cache line.}:
+Some common cache eviction policies are\footnote{Cache eviction policies only have an effect when a memory location can be placed in one of multiple cache lines (the cache has an associativity of at least 2). If a memory location can be placed in only one cache line, it has to replace that specific cache line.}:
 \begin{description}
     \item[LRU (Least Recently Used)] The line that has not been accessed for the longest time is evicted.
     This choice is based on the assumption that, if a line has not been accessed for a long time, it is less likely to be accessed in the near future.
@@ -76,7 +76,7 @@ From these numbers we can compute how many cycles each kernel will take to execu
 For kernel 1, we have 4 misses and 1 hit, resulting in a total of 1180 cycles; while kernel 2 can be executed in 610 cycles.
 
 \section{The Problem}\label{sec:the-problem}
-As we discussed in \cref{sec:kernel-sampling}, most kernels in a workload won't be simulated.
+As we discussed in \Cref{sec:kernel-sampling}, most kernels in a workload won't be simulated.
 This means that a lot of intermittent kernels will never be run, which might impact the cache states.
 In effect, we can assume that each kernel will be run with cold caches, as the kernels right before a kernel might not have been run.
 
@@ -87,7 +87,7 @@ In effect, we can assume that each kernel will be run with cold caches, as the k
     \label{fig:flush-exec}
 \end{figure}
 
-In~\cref{fig:flush-exec}, we revisit the same example, assuming that the sampling method only selected kernel 2 to be simulated.
+In~\Cref{fig:flush-exec}, we revisit the same example, assuming that the sampling method only selected kernel 2 to be simulated.
 Below is the code excerpt for kernel 2:
 \begin{minted}[linenos,firstnumber=8]{nasm}
     ; Kernel 2:
