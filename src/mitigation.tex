@@ -174,7 +174,7 @@ This can explain the slight inaccuracy we see for full memory warmup.
 
 Since the cold-start problem is inherently tied to the cache state, we should look at factors that can impact this state in order to find a correction factor.
 Tools like NVIDIA's Nsight Compute~\cite{nsight} and NVBit~\cite{nvbit} can provide detailed cache statistics, which might be used to compute this factor.
-Some possible factors are:
+Some possible factors we considered are:
 \begin{itemize}
     \item \textit{Profiler differences:} by profiling a workload twice, once with and once without flushing, one can see the impact of the cold-start problem in silicon.
     This data might be used to improve simulation results.
@@ -187,19 +187,8 @@ Some possible factors are:
     \item \textit{L2 miss rate:} this value could be used together with the \textit{number of memory instructions}.
 \end{itemize}
 
-\begin{figure}[hb]
-    \centering
-    \input{figures/mitigation/stats_dct}
-    \caption{DCT mitigation statistics}
-    \label{fig:dct_mitig}
-    \input{figures/mitigation/stats_ocean}
-    \caption{OceanFFT mitigation statistics}
-    \label{fig:ocean_mitig}
-\end{figure}
-
-We have gathered some of these factors in \Cref{fig:dct_mitig} for a subset of the DCT workload.
-The kernel invocations for which a mitigation is required (kernels 11, 13, 114, and 115) are emphasized.
-In \Cref{fig:ocean_mitig}, we have done the same for the OceanFFT workload (with its single high-impact kernel marked).
+Some of these factors will be used in \Cref{subsec:formula}, where we outline a formula that seems to perform rather well.
+All the data used for that formula can be gathered by simulating a single kernel, and/or profiling the workload.
 
 However, we have to be careful when finding a correction factor.
 Since some factors that could impact cache state (e.g.\ the number of cache evictions) are hardware- and platform-dependent, we could end up with a correction factor that only works for a specific platform.
@@ -233,6 +222,41 @@ Here, $IPC$ is the final (corrected) IPC value, $instructions$ is the number of 
 We use $accesses$ for the number of unique DRAM accesses, $controllers$ for the memory controller occupancy, $line$ for the size of a cache line, and $reuse$ for the (forward) reuse factor.
 $DRAM$ and $L2$ are the latencies of the respective memory regions.
 
+This formula was tested on the DCT workload and improved on the sensitive kernels (11, 13, 114, and 115).
+The other kernels suffered from a slight drop in accuracy, when compared to their raw accuracy (i.e.\ using no correction factor at all).
+
+\textit{Note:} the formula above cannot be used for OceanFFT, as it uses a subtractive factor.
+In OceanFFT, we would need to increase the number of cycles (since starting from a cold cache increases the IPC for some kernels).
+
+In \Cref{fig:dct-mitig}, we have gathered some results for the DCT workload.
+For a number of kernels, the accuracy of the formula is compared to the raw accuracy (meaning the flushed accuracy, without any corrections).
+As you can see, the overall accuracy took a slight hit (dropping from 98\% to around 96\%), while the sensitive kernels improved (from 89\% to 93\%).
+In \Cref{sec:sim-vs-corr}, we will compare the accuracy of this approach against the accuracy for memory warmup (with a single kernel).
+
+\begin{figure}[h]
+    \centering
+    \appendW{figures/mitigation/corr_dct}{}
+    \caption{DCT mitigation results}
+    \label{fig:dct-mitig}
+\end{figure}
+
+The exact values are slightly different from the ones used in \Cref{sec:kernel-selection}, but the general trend is the same.
+This is due to the inherent non-determinism in the simulator, which can lead to slightly different results for the same kernel.
+
+\FloatBarrier
+\section{Comparison}\label{sec:sim-vs-corr}
+\begin{figure}[h]
+    \centering
+    \appendW{figures/mitigation/comp-box.pgf}{}
+    \appendW{figures/mitigation/comp-table}{}
+    \caption{Comparison of mitigation methods}
+    \label{fig:mitig-compare}
+\end{figure}
+
+In \Cref{fig:mitig-compare}, we see that both mitigation approaches are able to eliminate the (negative) outliers.
+However, since there are so few suffering kernels, the median doesn't improve by a lot.
+In general, we can conclude that either mitigation approach is able to improve the accuracy of the simulator.
+
 \FloatBarrier
 \section{Conclusion}\label{sec:mitigation-conclusion}
 
@@ -245,10 +269,10 @@ In this case, we have selected the memory instructions of preceding kernels and 
 Even for kernels that suffered a lot from the cold-start problem, we have shown that warming up using a single kernel has a drastic impact on the accuracy already.
 In many cases, a single kernel was enough to reach over 99\% accuracy.
 
-% TODO: rewrite
-Finally, we have looked into possible correction factors.
-Some possible factors that can be used to create a comprehensive function to compute a correction factor have been outlined.
-These factors range from L2 miss rate and DRAM delay to higher-level statistics about inter-kernel data reusability.
-However, no conclusive results were found.
-We also noted that it might be possible to over-tune a solution like this.
-Computing a highly accurate correction factor like this might work perfectly on one platform but reduce accuracy on another, missing the point of GPU simulation entirely.
+Lastly, we have looked into computing a correction factor.
+The factor we proposed is based on the number of cycles that could be saved, taking into account parallel requests and DRAM information.
+This factor has less of a computational overhead (since no additional traces need to be simulated), but resulted in a slightly lower accuracy than the memory warmup approach.
+However, we need to be careful not to over-tune this factor, as it could limit the simulator to a specific platform (beating the purpose of GPU simulation in the first place).
+
+In general, both approaches are able to mitigate the cold-start problem, and improve the accuracy of the simulator, especially for kernels that do suffer from it.
+Either method was able to raise the accuracy of each DCT kernel to at least 90\%, with the memory warmup reaching up to almost 95\%.

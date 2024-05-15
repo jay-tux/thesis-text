@@ -164,7 +164,7 @@ After quantifying the cold-start problem, we will look at ways to mitigate it.
     The main conclusion here will be that simulating the memory instructions of a single preceding kernel will give us a very high accuracy (often up to 99\%) at a rather low computational cost.
     \item[Correction factors:] using certain factors we can compute a factor to correct the performance numbers of a cold-started kernel.
     The main idea will be to find a subtractive factor for the number of cycles.
-    % TODO: conclusion for correction factor???
+    This approach will prove to also yield good results, but will be slightly less accurate than simulating memory instructions for a single additional kernel.
 \end{description}
 
 \section{Conclusions}\label{sec:conclusions}
@@ -175,4 +175,4 @@ Additionally, we will show that the cold-start problem is less severe in simulat
 Finally, we will look into ways to mitigate the cold-start problem, exploring three different avenues.
 The first avenue, simulating all preceding kernels, will be discarded as it is not feasible, especially for larger workloads.
 The second avenue, simulating only the memory instructions of a single preceding kernel, will be shown to give a very high accuracy at a low computational cost.
-The third avenue, using correction factors, will be shown to be a viable alternative to the second avenue. % TODO conclusion???
+The third avenue, using correction factors, will be shown to be viable as well, having a slightly lower accuracy to the second avenue, but at a lower computational cost.
