@@ -224,4 +224,111 @@ Computing or predicting the final IPC for the application is done by taking the 
     IPC = \frac{1}{\sum_{\text{stratum/cluster } i}{\frac{w_i}{IPC_i}}}
 \end{align*}
 
-% TODO: add BLRL (Lieven) discussion
+\section{Cold start in CPU simulation}\label{sec:cold-start-in-cpu-simulation}
+This thesis will focus on the cold-start problem in GPU simulation.
+However, extensive research has already been done on the cold-start problem in CPU simulation.
+We will shortly discuss some results from this research, both regarding quantification and mitigation, as they might be useful in the context of GPU simulation.
+Finally, we will look at one mitigation strategy in detail.
+
+Both in GPU and CPU simulation, workloads are often too large to simulate in their entirety.
+Whereas GPU simulations can take up to centuries, simulation of common CPU benchmarks takes usually takes a few days or weeks~\cite{blrl}.
+This is still too long of a time to be practical, so researchers have come up with sampling strategies to reduce the simulation time, just like with GPU simulation.
+
+These sampled methodologies suffer from the cold start problem as well, as some hardware state might be lost (e.g.\ caches, TLBs, branch predictors, etc.).
+Additionally, for many samples, this warmup history is very long, as caches\footnote{We will often refer to just caches, as these are most relevant to the research in this thesis, but this also includes TLBs, branch predictors, and more.} are typically rather large.
+This leads to proportionally long warmup times.
+
+From this, we can gather two main problems:
+\begin{enumerate}
+    \item \textbf{Selection:} CPU benchmarks often have a lot of different phases, and all phases need to be represented among the samples.
+    This is not a problem we will look into, as it is covered by the PKA and Sieve techniques.
+    \item \textbf{Cold-start:} the hardware state at the beginning of each sample might be lost.
+    The main cause here is the fact that a lot of instructions are never simulated, so they have not had a chance to modify the micro-architectural state.
+\end{enumerate}
+
+Regarding the cold-start problem, other works often identify three phases in the simulation:
+\begin{description}
+    \item[Cold simulation:] this is pure, functional simulation.
+    Instructions are fast-forwarded and do not modify the micro-architectural state.
+    This type of simulation is very fast, but does not contribute to the final results obtained by simulation.
+    \item[Warm simulation:] a region of instructions before the sample is simulated.
+    These instructions are used to warm up the caches, TLBs, and branch predictors.
+    Because more data needs to be gathered, the simulation time is longer (about twice as long as cold simulation).
+    \item[Hot simulation:] the sample is simulated, gathering all performance metrics.
+    This type of simulation is very slow (almost ten times slower than warm simulation).
+\end{description}
+
+In~\cite{simplescalar}, the simulation speeds of each of these phases are compared: cold simulation runs at about 7 MIPS (million instructions per second), warm simulation at about 3 MIPS, and hot simulation at about 0.3 MIPS.
+To speed up simulation, we need to reduce the amount of instructions run under warm and/or hot simulation.
+The number of instructions run under hot simulation can be reduced by sampling, which requires simulating instructions under warm simulation.
+
+\subsection{Warmup strategies}\label{subsec:warmup-strategies}
+The authors of~\cite{blrl} have identified a number of well-known strategies to reduce the warmup time:
+\begin{itemize}
+    \item \textbf{Cold scheme:} this scheme performs no warmup at all, assuming all caches are cold at the beginning of every sample.
+    \item \textbf{Checkpoint:}~\cite{cpu-checkpoint} this scheme saves the micro-architectural during profiling, and restores it at the beginning of each sample.
+    However, this requires a lot of disk space, as a lot of micro-architectural variables have to be saved and restored.
+    On the other hand, it does guarantee a perfectly warmed up cache.
+    \item \textbf{Stitch:}~\cite{cpu-stitch-prime} this scheme attempts to approximate the micro-architectural state at the beginning of a sample by taking into account the state at the end of the last sample, stitching them together.
+    \item \textbf{Prime-xx\%:}~\cite{cpu-stitch-prime} this scheme assumes that the first $xx\%$ instructions of the sample are warmup, and only gathers performance data on the other instructions.
+    \item The authors of~\cite{cpu-merge-stitch-prime} propose a combination of the Stitch and Prime-xx\% schemes.
+    In this combined strategy, the hardware state at the beginning of the sample is assumed to be the hardware state at the end of the previous sample, plus the changes made by the first $xx\%$ instructions of the sample.
+    \item \textbf{Correction factor:}~\cite{cpu-stitch-prime,cpu-corr-fac} using statistics and math, the number of cold misses due to the cold-start problem is estimated.
+    \item \textbf{NSL:}~\cite{cpu-nsl} no-state-loss determines which memory addresses are used by the sample.
+    Using this information, it checks memory instruction preceding the sample, keeping track of whether they would overwrite the cache line for any memory address in the sample.
+    This LRU (least-recently-used) cache is then used to warm up the cache.
+    Obviously, this scheme does not work for branch predictors, and only works for caches (and TLBs) using the LRU eviction policy.
+    \item \textbf{MSE:}~\cite{cpu-mse} minimal subset estimation uses probability and a set of formulae to estimate the start position of the warming region.
+\end{itemize}
+Two other methods, \textit{Memory Reference Reuse Latency} (\textit{MRRL})~\cite{cpu-mrrl} and \textit{Boundary Length Reuse Latency} (\textit{BLRL})~\cite{blrl}, will be discussed more extensively below.
+Both are derivatives of the \textit{MSE} scheme.
+
+From all these methods, only \textit{NSL}, \textit{MSE}, \textit{MRRL}, and \textit{BRLR} guarantee a nearly perfect hardware state at a reasonable cost.
+
+\subsection{Memory reference reuse latency}\label{subsec:mrrl}
+The name of the method is a reference to the metric used: the \textit{memory reference reuse latency}~\cite{cpu-mrrl} refers to the number of instructions between two consecutive references to the same memory location.
+This metric is used to estimate the required length of the warmup phase, given a factor representing the tradeoff between accuracy and simulation speed.
+
+In general, MRRL works like this, using all instructions between two consecutive samples as the pre-sample regions for the next sample:
+\begin{enumerate}
+    \item The entire region, both pre-sample and sample, are divided into $N_B$ buckets, each having $L_B$ contiguous instructions (this means a total of $N_B*L_B$ instructions are considered).
+    These buckets are indexed from 0 to $N_B - 1$, with bucket 0 being at the start of the pre-sample region.
+    Additionally, these buckets are divided into $N_{B,P}$ pre-sample buckets and $N_{B,S}$ sample buckets ($N_B = N_{B,P} + N_{B,S}$).
+    Finally, for each bucket $i$, a counter $c_i$ is initialized to 0.
+    \item For each memory reference in the region, its MRRL is calculated, and the relevant counter is incremented.
+    To determine which counter $c_i$ should be updated, the MRRL is (integer) divided by $L_B$ ($i = \lfloor \frac{MRRL}{L_B} \rfloor$).
+    \item After all memory references have been processed, a histogram is created from the counters.
+    For each counter $c_i$, a value $p_i = \frac{c_i}{\sum_{j=0}^{N_B-1}{c_j}}$ is computed.
+    These values correspond to the probability that a memory reference has an MRRL in the range $[i*L_B, (i+1)*L_B)$.
+    Due to the temporal locality of memory references, we expect $p_i$ is higher for smaller $i$.
+    \item Using this histogram, we can compute the percentile $K\%$, and its corresponding bucket $k$.
+    This means that $K\%$ of all memory references have an MRRL of at most $k*L_B$.
+    \item These $k$ buckets are then selected as the warmup buckets, meaning that warm simulation is started $k*L_B$ instructions before the sample.
+\end{enumerate}
+
+While this yields a very good estimate of the warmup region, it does forget about one issue: when the MRRL behavior of the pre-sample and the sample do not match very well, it might be suboptimal.
+Due to this mismatch in behavior, it could overestimate the warmup region, leading to a longer simulation time.
+On the other hand, it could also underestimate the warmup region, leading to lower accuracy than expected.
+To mitigate these issues, the BLRL scheme was proposed.
+
+\subsection{Boundary length reuse latency}\label{subsec:blrl}
+BLRL~\cite{blrl} is a derivative of the MRRL scheme, keeping the same general workflow.
+Instead of using each memory reference, like MRRL does, it only uses memory references whose MRRL crosses the boundary between the pre-sample and the sample.
+This means that only the memory references that need warming up are considered, which leads to a smaller warmup region.
+
+Additionally, the BLRL scheme computes only takes into account the pre-sample reuse latency; they subtract the reuse latency that is part of the sample.
+For example, if instruction $i$ (part of the sample), reuses a memory location that was last used by the pre-sample region, we compute the pre-sample reuse latency as $MRRL - (i - N_{B,P}*L_B)$ (we subtract the number of instructions since the beginning of the sample from the MRRL).
+Using these pre-sample reuse latencies, a similar histogram is created, and normalized to the number of reuse latencies crossing the boundary.
+
+This histogram is then, like MRRL, used to compute the percentile $K\%$.
+In the same way, the corresponding bucket count $k$ is selected as the warmup region.
+
+The authors note three key differences between MRRL and BLRL:
+\begin{enumerate}
+    \item Instead of considering all memory references, BLRL only considers those which also appear in the sample.
+    \item Instead of using all memory references in both pre-sample and sample, BLRL only considers those crossing the boundary.
+    \item Instead of using the actual MRRL value, BLRL uses the pre-sample reuse latency (it only counts latencies up to the border).
+\end{enumerate}
+
+From an analysis of multiple CPU benchmarks, the authors found that BLRL is more accurate in almost all cases, and very often features a shorter warmup phase.
+This means we get a better accuracy at a lower cost, for almost all benchmarks.
