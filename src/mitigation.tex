@@ -164,7 +164,7 @@ The opposite happens when we only simulate memory instructions (full memory warm
 This can explain the slight inaccuracy we see for full memory warmup.
 \begin{figure}[h]
     \centering
-    \appendW{figures/simulated/interleaving-delta}{0.45}
+    \appendW{figures/simulated/interleaving-delta}{0.36}
     \caption{Interleaving example - cache state differences}
     \label{fig:example2_final}
 \end{figure}
@@ -205,7 +205,7 @@ To this end, we will use the following metrics, all of which can be gathered by 
     By filtering these on unique values, we know the number of cold misses.
     \item \textbf{Memory controller occupation:} since the memory controllers in the system are able to process requests in parallel, the number of controllers might impact the number of cycles lost due to latency.
     Accel-Sim outputs their occupancy by default (the lines starting with\ \verb|dram[]|).
-    Importantly, we also take into account how evenly they are used; e.g.\ if a controller is used only half as much as another, we count it as half a controller.
+    Importantly, we also take into account how evenly they are used; see \Cref{subsubsec:mem-ctrl}.
     \item \textbf{Cache line size:} the DRAM accesses contain byte-level memory addresses.
     However, multiple consecutive addresses map to the same cache line, which might avoid some cold misses.
     \item \textbf{Reuse factor:} we use the \textit{forward reuse factor} from the \emph{previous} kernel.
@@ -216,7 +216,7 @@ To this end, we will use the following metrics, all of which can be gathered by 
 Combining all of these, we came up with the following formula:
 \begin{align}
     IPC &= \frac{instructions}{cycles_f - \Delta} \\
-    \Delta &= \frac{accesses}{controllers * line} * reuse * (DRAM - L2)
+    \Delta &= \frac{accesses}{controllers * line} * fwd_{i-1} * (DRAM - L2)
 \end{align}
 Here, $IPC$ is the final (corrected) IPC value, $instructions$ is the number of dynamically executed instructions, $cycles_f$ is the number of cycles when simulating the kernel with cold caches (in flushed mode), and $\Delta$ is the correction factor.
 We use $accesses$ for the number of unique DRAM accesses, $controllers$ for the memory controller occupancy, $line$ for the size of a cache line, and $reuse$ for the (forward) reuse factor.
@@ -243,6 +243,32 @@ In \Cref{sec:sim-vs-corr}, we will compare the accuracy of this approach against
 The exact values are slightly different from the ones used in \Cref{sec:kernel-selection}, but the general trend is the same.
 This is due to the inherent non-determinism in the simulator, which can lead to slightly different results for the same kernel.
 
+\subsubsection{Memory controllers}\label{subsubsec:mem-ctrl}
+Not all workloads use all memory controllers evenly - in the worst case, a single controller does all the work while the others are idle.
+In that case, it would be incorrect to use the total number of controllers in the formula.
+To mitigate this, we compute the evenly used controllers, and use that value in the formula.
+
+AccelSim outputs memory controller data under the form of number of DRAM requests made, per controller, per bank.
+Additionally, this data is output for both reads and writes.
+
+We compute the evenly used controllers from the average occupancy of each controller ($occ_{ctrl}$) as follows:
+\begin{align}
+    occ_{ctrl} &= \frac{\sum_{i = 1}^{banks}{reads_{ctrl, i}} + \sum_{i = 1}^{banks}{writes_{ctrl, i}}}{2 * banks} \\
+    controllers &= \frac{\sum_{ctrl}{occ_{ctrl}}}{\max_{ctrl}{occ_{ctrl}}}
+\end{align}
+
+Where:
+\begin{itemize}
+    \item $occ_{ctrl}$ is the average occupancy of a controller $ctrl$;
+    \item $banks$ is the number of memory banks;
+    \item $reads_{ctrl, i}$ is the number of read accesses made by controller $ctrl$ to bank $i$;
+    \item $writes_{ctrl, i}$ is the number of write accesses made by controller $ctrl$ to bank $i$; and
+    \item $controllers$ is the number of evenly used controllers (the final value used in the formula for $\Delta$).
+\end{itemize}
+
+For DCT, this value was around 8 in our experimental setup, meaning that 8 out of the 16 controllers were used.
+OceanFFT, however, used almost all controllers evenly.
+
 \FloatBarrier
 \section{Comparison}\label{sec:sim-vs-corr}
 \begin{figure}[h]
@@ -259,6 +285,10 @@ In general, we can conclude that either mitigation approach is able to improve t
 
 Additionally, we also included minimum accuracy, the first quartile, the median, the standard deviation, the third quartile, and the maximum accuracy for each of these methods.
 Due to the elimination of outliers, the standard deviation is lower for both mitigation methods, compared to the raw accuracy.
+
+Due to temporal locality, we expect the impact of a kernel on the caches to be lower the further back in time it is.
+This is also reflected in the results: \Cref{fig:mitig-compare} clearly shows that full memory warmup has no practical benefits over just using a single kernel to warm up the caches.
+Worse still, all metrics are slightly worse for full memory warmup, compared to partial memory warmup.
 
 \FloatBarrier
 \section{Conclusion}\label{sec:mitigation-conclusion}

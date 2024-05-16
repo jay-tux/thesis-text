@@ -1,2 +1,148 @@
 \chapter{Conclusion}\label{ch:conclusion}
-% TODO!
+
+In this thesis, we have analyzed the cold-start problem in GPUs.
+We have shown that the cold-start problem is a real issue, affecting the performance of GPUs in a significant way.
+We have also shown that the cold-start problem is not limited to a single workload, but that it can affect a wide range of workloads.
+In this chapter, we will present our conclusions, discussing both quantification and mitigation.
+
+\section{Quantification}\label{sec:quantification}
+We started by analyzing whether the cold-start problem is an actual issue.
+To this end, we analyzed multiple workloads on real hardware, and a limited number of them in the AccelSim simulator.
+From this, we have concluded that the cold-start problem is a real issue, affecting the performance of GPUs in a significant way.
+
+\subsection{The cold-start problem in hardware}\label{subsec:cold-start-in-hardware}
+We have analyzed the cold-start problem in real hardware, and have shown that it is a real issue.
+Multiple workloads have shown a significant impact from the cold-start problem, see \Cref{fig:concl-unw-hw}.
+
+Additionally, we have weighted each kernel based on its instruction count, and have seen that its severity changes based on the kernel's weight.
+Taking into account is important because sampling methods like \textit{Sieve} uses these weights to select the kernels to simulate, see \Cref{fig:concl-w-hw}.
+
+For your reference, we have included the main plots from \Cref{ch:hw-analysis} below, in \Cref{fig:concl-hw-impact}.
+
+\begin{figure}[ht]
+    \centering
+    \appendCW{figures/hardware/mlperf_cactus_boxplot.pgf}{Unweighted impact}{fig:concl-unw-hw}{0.45}
+    \appendCW{figures/hardware/mlperf_cactus_weight.pgf}{Weighted impact}{fig:concl-w-hw}{0.45}
+    \caption{Impact of the cold-start problem in hardware}
+    \label{fig:concl-hw-impact}
+\end{figure}
+
+Finally, we also introduced the notion of \textit{forward} and \textit{backward data reuse}.
+These were defined as the number of unique memory instructions that are reused.
+For any given kernel $k_i$, we defined $M_i$ as the set of memory instructions used by $k_i$.
+From this, we can compute both \textit{forward} ($fwd_i$) and \textit{backward data reuse} ($bwd_i$) as:
+\begin{align}
+    fwd_i &= \frac{|M_i \cap M_{i+1}|}{|M_i|} \\
+    bwd_i &= \frac{|M_{i-1} \cap M_i|}{|M_i|}
+\end{align}
+
+\subsection{The cold-start problem in simulation}\label{subsec:cold-start-in-simulation}
+From all workloads we have analyzed in the hardware, we have selected a subset to analyze in the AccelSim simulator.
+The main ones we have analyzed were DCT, 3D U-Net, and OceanFFT\@.
+
+From this analysis, we have concluded that the cold-start problem is less severe in the simulator.
+The maximum impact of the cold-start problem on 3D-UNet drops from over 20\% to around 15\%.
+
+Once again, we have included the main plot from \Cref{ch:sim-analysis} in \Cref{fig:concl-sim-impact}.
+
+\begin{figure}[h]
+    \centering
+    \appendW{figures/simulated/full_dct_ocean_unet_sim.pgf}{0.45}
+    \caption{Impact of the cold-start problem in simulation}
+    \label{fig:concl-sim-impact}
+\end{figure}
+
+\subsubsection{OceanFFT}\label{subsubsec:oceanfft}
+The OceanFFT workload really stands out, compared to other workloads.
+Strangely enough, the simulator shows that it runs faster when the caches are flushed, as you can see in \Cref{fig:concl-ocean-odd}.
+
+\begin{figure}[hb]
+    \centering
+    \appendW{figures/simulated/ocean_issue}{}
+    \caption{OceanFFT oddity}
+    \label{fig:concl-ocean-odd}
+\end{figure}
+
+This will prove problematic for one of our mitigations.
+
+\section{Mitigation}\label{sec:mitigation}
+The last chapter of this thesis, \Cref{ch:mitigation}, was dedicated to finding a mitigation for the cold-start problem.
+We have identified three different avenues, two of which proved to be practical.
+Finally, we have also compared their effectiveness.
+
+The three avenues discussed were:
+\begin{itemize}
+    \item \textbf{Simulating preceding kernels in full:} This method involves ensuring a consistent, warm hardware state by simulating preceding kernels in full.
+    However, this is quite infeasible, and goes against the idea of sampling (which is used to speed up simulation).
+    \item \textbf{Memory-only simulation of preceding kernels:} We only simulate the memory instructions of preceding kernels.
+    This is a very feasible and accurate method, partly thanks to memory locality.
+    \item \textbf{Correction factor:} We have also proposed a correction factor, which is based on the data reuse of the kernels, among others.
+    This removes the overhead of any additional simulation, at the cost of a slightly lower accuracy.
+\end{itemize}
+
+\subsection{Memory-only simulation}\label{subsec:memory-only-simulation}
+From the DCT workload, we have selected four kernels to analyze.
+For each of those kernels, we simulated the memory instructions of up to 10 previous kernels.
+To be able to do this, we have modified AccelSim's builtin NVBit tool.
+
+\begin{figure}[hb]
+    \centering
+    \appendW{figures/simulated/kernel-11-acc.pgf}{0.45}
+    \appendW{figures/simulated/kernel-13-acc.pgf}{0.45}
+    \appendW{figures/simulated/kernel-114-acc.pgf}{0.45}
+    \appendW{figures/simulated/kernel-115-acc.pgf}{0.45}
+    \caption{Accuracy of memory-only simulation}
+    \label{fig:concl-mitig-mem-acc}
+\end{figure}
+
+Our main conclusion from this analysis is that the memory-only simulation is very accurate.
+Even simulating only a single additional kernel results in incredible accuracy, see \Cref{fig:concl-mitig-mem-acc}.
+
+\subsection{Correction factor}\label{subsec:correction-factor}
+Our final avenue was the correction factor.
+Using a selection of factors (like data reuse, forward data reuse, and backward data reuse), we have proposed a formula to correct the IPC values of kernels.
+
+Our main goal was to compute an upper bound for the number of cycles lost due to the cold-start problem.
+We approximated this number to be proportional to:
+\begin{itemize}
+    \item The number of (unique) DRAM requests made; this gives an idea of the number of cold misses.
+    We scale this value by dividing it by the number of memory controllers used (and the cache line size).
+    \item The forward data reuse factor of the previous kernel; this gives an idea of the fraction of cold misses due to the cold-start problem.
+    \item The difference in latencies between LLC (L2) and DRAM\@.
+\end{itemize}
+
+With these observations, we came up with the following formula:
+\begin{align}
+    IPC &= \frac{instructions}{cycles_f - \Delta} \\
+    \Delta &= \frac{accesses}{controllers * line} * fwd_{i-1} * (DRAM - L2)
+\end{align}
+
+Where:
+\begin{itemize}
+    \item $IPC$ is the final, corrected IPC;
+    \item $instructions$ is the number of instructions executed by the kernel;
+    \item $cycles_f$ is the number of cycles as reported by the simulator (in cold-start mode);
+    \item $\Delta$ is the correction factor;
+    \item $accesses$ is the number of unique DRAM accesses made by the kernel;
+    \item $controllers$ is the number of memory controllers used\footnote{We count memory controllers that are used less than others, as partial memory controllers; see \Cref{subsubsec:mem-ctrl}.};
+    \item $line$ is the cache line size;
+    \item $fwd_{i-1}$ is the forward data reuse factor of the \textit{previous} kernel; and
+    \item $DRAM$ and $L2$ are the DRAM and L2 cache latencies, respectively.
+\end{itemize}
+
+We found that this formula does manage to eliminate the (lower) outliers in IPC values, at the cost of a slightly lower median accuracy.
+
+\subsection{Comparison}\label{subsec:comparison}
+In the final section, \Cref{sec:sim-vs-corr}, we have compared the two methods.
+We have found that the memory-only simulation is the most accurate, but we also noted it is the most computationally expensive.
+Below is once again the boxplot showing our conclusion, see \Cref{fig:concl-mitig-comp}.
+
+\begin{figure}[hb]
+    \centering
+    \appendW{./figures/mitigation/comp-box.pgf}{}
+    \caption{Comparison between mitigations}
+    \label{fig:concl-mitig-comp}
+\end{figure}
+
+A strange result here is that full memory simulation is less accurate than simulating just a single kernel.
+Since the numbers are quite close together, we assume that this is largely due to non-determinism in the simulator.

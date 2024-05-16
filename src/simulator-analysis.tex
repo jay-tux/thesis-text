@@ -75,7 +75,7 @@ These sorted traces are each written to their own new file, while an additional 
 In this section, we will show that the impact of this problem persists in the AccelSim simulator.
 However, one of the first things we have noticed is that the simulator is affected much differently from the real hardware.
 
-Due to the inherent overhead in simulating GPUs, we had to limit the number of kernels we could simulate, as well as which workloads we could focus on.
+Due to the inherent overhead in simulating GPUs, we had to limit the number of kernels we could simulate(in this case, up to 130, which fit the DCT nicely, but served as a cutoff for 3D-UNet), as well as which workloads we could focus on.
 The DCT and 3D U-Net workloads were selected for this analysis, as they showed promising results in the hardware analysis.
 Following our discussion about inter-kernel data reuse, we also included the OceanFFT workload (from the CUDA SDK) in this analysis.
 
@@ -98,6 +98,7 @@ Where the hardware results showed that more than 50\% of the workload suffered f
 In this figure, the OceanFFT workload really stands out, compared to the other workloads.
 When looking into the structure of the OceanFFT workload, we noticed that it consists of only five kernels, of which one (kernel \#2) is significantly affected by the cold-start problem.
 The other four kernels (kernel \#1, \#3, \#4, and \#5) are not affected by the cold-start problem at all (all of them suffering less than 0.5\% relative IPC difference), as you can see in \Cref{fig:ocean_kernels}.
+We also compared the data reuse factors for each of these kernels, and they are both very irregular, and a lot lower than DCT\@.
 
 \begin{figure}[ht]
     \centering
@@ -109,6 +110,9 @@ The other four kernels (kernel \#1, \#3, \#4, and \#5) are not affected by the c
 In addition, we also noticed that OceanFFT suffers from another oddity: its kernels run faster with flushed caches.
 Especially the second kernel, whose IPC increases with almost 50\% if we flush the caches, as you can see in \Cref{fig:ocean_issue}.
 
+We assume that this might be caused by the fact that the second kernel only reuses a small fraction of memory addresses used by the first one.
+In that case, the caches would be filled with data that is not used by the second kernel, causing the (simulated) GPU to waste precious cycles on searching the caches for data that is not there.
+
 \begin{figure}[ht]
     \centering
     \appendW{figures/simulated/ocean_issue}{}
@@ -116,14 +120,15 @@ Especially the second kernel, whose IPC increases with almost 50\% if we flush t
     \label{fig:ocean_issue}
 \end{figure}
 
-We assume that this might be caused by the fact that the second kernel only reuses a small fraction of memory addresses used by the first one.
-In that case, the caches would be filled with data that is not used by the second kernel, causing the (simulated) GPU to waste precious cycles on searching the caches for data that is not there.
 
 \FloatBarrier
 \section{Simulator conclusion}\label{sec:simulator-conclusion}
 Once again, we see that the cold-start problem persists.
-However, it is much less severe in the simulator.
+However, it is much less severe in the simulator; the maximum impact of the cold-start problem on 3D-UNet drops from over 20\% to around 15\%.
+For DCT, this shows even more, as a large part of the workload (just shy of 60\%) suffered from at least 20\% of IPC difference in hardware, while in the simulator, not a single kernel suffers that much.
+Instead, the differences cap out around 15\%, with less than 1\% of the workload suffering from that.
 
 In the next chapter, we will start looking for a mitigation, limiting the impact of the cold-start problem.
 We will mostly analyze the DCT workload, due to its short runtime and thus reasonable runtime.
-%The OceanFFT will prove to not be very promising, having the ``problematic'' kernel as second kernel chronologically, limiting our analysis of
+Two main factors will exclude the OceanFFT workload from this analysis: firstly, the most interesting kernel is the second one, limiting one of our mitigations.
+Secondly, its oddity (the fact that it runs faster with flushed caches) makes it a bad candidate for our second mitigation.
