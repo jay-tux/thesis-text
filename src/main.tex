@@ -16,6 +16,7 @@
 \usepackage{placeins}
 \usepackage{arydshln}
 \usepackage{tikz}
+\usepackage{pdfpages}
 \usepackage[outputdir=../out]{minted}
 \usepackage[noabbrev]{cleveref}
 
@@ -31,8 +32,17 @@
 
 \input{macros}
 
-\author{Jonas Sys}
 \title{Quantifying and Mitigating the Cold-Start Problem in GPU Simulation}
+\author{Jonas Sys}
+\studentnumber{01911330}
+\academicyear{2023 -- 2024}
+
+\titletext{
+    Supervisor: Prof.\ dr.\ ir.\ Lieven Eeckhout \\
+    Counsellors: Dr. Mahmood Naderan-Tahan, Seyyed Hossein SeyyedAghaei Rezaei \\
+    {\small Master's dissertation submitted in order to obtain the academic degree of \\
+    Master of Science in Computer Science}
+}
 
 % Document
 \begin{document}
@@ -40,7 +50,8 @@
     \maketitle
     \pagenumbering{roman}
     \include{summary}
-    \include{abstract}
+%    \include{abstract}
+    \includepdf[pages=-]{../out/abstract/abstract.pdf}
     \include{reuse}
     
     \tableofcontents

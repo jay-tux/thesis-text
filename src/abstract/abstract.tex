@@ -1,0 +1,48 @@
+%! Author = jay
+%! Date = 5/17/24
+
+% Preamble
+\documentclass[5p,numvwe]{elsarticle}
+
+% Packages
+%\usepackage[dutch]{babel}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage[outputdir=../out/abstract]{minted}
+\captionsetup[listing]{position=top}
+\usepackage{standalone}
+\usetikzlibrary{shapes,arrows,positioning,backgrounds,calc,intersections,calc}
+\usepackage[colorlinks]{hyperref}
+\usepackage{fontspec}
+\newcommand*{\acronym}[1]{{\addfontfeature{Letters=UppercaseSmallCaps}#1}}
+
+\title{Quantifying and Mitigating the Cold-Start Problem in GPU Simulation}
+
+\makeatletter
+\def\ps@pprintTitle{%
+    \let\@oddhead\@empty
+    \let\@evenhead\@empty
+    \def\@oddfoot{\footnotesize\itshape\hfill\today}%
+    \let\@evenfoot\@oddfoot
+}
+\makeatother
+
+\fntext[fn1]{Ghent University}
+\fntext[fn2]{Department of Electronics and Information Systems, Faculty of Engineering and Architecture, Ghent University}
+
+\author{Jonas Sys \fnref{fn1}}
+\author{Mahmood Naderan-Tahan \fnref{fn2}}
+\author{Seyyed Hossein SeyyedAghaei Rezaei \fnref{fn2}}
+\author{Lieven Eeckhout \fnref{fn2}}
+
+% Document
+\begin{document}
+    \begin{abstract}
+    \end{abstract}
+
+    \maketitle
+
+
+\end{document}
