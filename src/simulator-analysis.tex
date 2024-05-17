@@ -81,8 +81,8 @@ Following our discussion about inter-kernel data reuse, we also included the Oce
 
 \begin{figure}[ht]
     \centering
-    \append{./figures/simulated/full_dct_ocean_unet_sim.pgf}
-    \append{./figures/simulated/full_dct_ocean_unet_table}
+    \appendW{./figures/simulated/full_dct_ocean_unet_sim.pgf}{0.75}
+    \appendW{./figures/simulated/full_dct_ocean_unet_table}{0.75}
     \caption{Weighted IPC differences}
     \label{fig:sim_ipc_diff}
 \end{figure}
@@ -111,7 +111,10 @@ In addition, we also noticed that OceanFFT suffers from another oddity: its kern
 Especially the second kernel, whose IPC increases with almost 50\% if we flush the caches, as you can see in \Cref{fig:ocean_issue}.
 
 We assume that this might be caused by the fact that the second kernel only reuses a small fraction of memory addresses used by the first one.
-In that case, the caches would be filled with data that is not used by the second kernel, causing the (simulated) GPU to waste precious cycles on searching the caches for data that is not there.
+This means that the caches are not warmed up enough to be beneficial for the second kernel.
+Additionally, if a lot of cache lines are dirty, and need to be flushed, this might stall the memory pipeline.
+As you can see in \Cref{fig:ocean_kernels}, the first kernel has a very large memory footprint (33.5 million unique addresses), which could easily flood the caches with data that is not useful for kernel 2.
+If a large part of this data has to be evicted (and, thus, possibly written back to DRAM), this can pile up in the memory hierarchy, causing the processors to stall.
 
 \begin{figure}[ht]
     \centering
@@ -127,6 +130,12 @@ Once again, we see that the cold-start problem persists.
 However, it is much less severe in the simulator; the maximum impact of the cold-start problem on 3D-UNet drops from over 20\% to around 15\%.
 For DCT, this shows even more, as a large part of the workload (just shy of 60\%) suffered from at least 20\% of IPC difference in hardware, while in the simulator, not a single kernel suffers that much.
 Instead, the differences cap out around 15\%, with less than 1\% of the workload suffering from that.
+
+We do not know what caused this discrepancy between the hardware and the simulator, however, we have a hypothesis.
+Perhaps there are some hardware details that get lost in the simulator, which is a slightly more idealized version of the hardware.
+Additionally, a lot of hardware details have to be gathered from micro-benchmarks~\cite{accelsim}, because vendors keep these details secret.
+While both the hardware (NVIDIA GeForce RTX 3080) and simulator (NVIDIA GeForce RTX 3070) used the same micro-architecture, there might be some subtle details that impacted the cold-start problem.
+Finally, our hardware experiments (and the simulation) ran using NVIDIA's Ampere architecture, which is not among the heavily tested architectures in the original Accel-Sim paper.
 
 In the next chapter, we will start looking for a mitigation, limiting the impact of the cold-start problem.
 We will mostly analyze the DCT workload, due to its short runtime and thus reasonable runtime.

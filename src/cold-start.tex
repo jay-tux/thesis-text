@@ -54,7 +54,7 @@ More specifically, since we access a memory location that had not been accessed 
 Each cache miss causes a DRAM access, costing us precious cycles.
 However, the repeat access of \verb|0x00AA| on line 4 (\mintinline{nasm}{st 0x00AA}) goes only through the cache, speeding up the access.
 
-Because we don't flush the caches between two kernel invocations in this example, kernel 2 can benefit from the cache state that kernel 1 left behind.
+Because we do not flush the caches between two kernel invocations in this example, kernel 2 can benefit from the cache state that kernel 1 left behind.
 At this point, we have no cold misses anymore, as all memory locations that are accessed have been accessed before.
 However, line 10 causes another miss, as the cache line associated with \verb|0x33DD| was overwritten by the access of \verb|0x11BB| on line 9, causing a conflict miss.
 These conflict misses occur when multiple memory locations are mapped to the same cache line, and one of them is evicted from the cache.

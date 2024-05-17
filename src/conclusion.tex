@@ -21,8 +21,8 @@ For your reference, we have included the main plots from \Cref{ch:hw-analysis} b
 
 \begin{figure}[ht]
     \centering
-    \appendCW{figures/hardware/mlperf_cactus_boxplot.pgf}{Unweighted impact}{fig:concl-unw-hw}{0.45}
-    \appendCW{figures/hardware/mlperf_cactus_weight.pgf}{Weighted impact}{fig:concl-w-hw}{0.45}
+    \appendCW{figures/hardware/mlperf_cactus_boxplot.pgf}{Unweighted impact}{fig:concl-unw-hw}{0.48}
+    \appendCW{figures/hardware/mlperf_cactus_weight.pgf}{Weighted impact}{fig:concl-w-hw}{0.48}
     \caption{Impact of the cold-start problem in hardware}
     \label{fig:concl-hw-impact}
 \end{figure}
@@ -47,7 +47,7 @@ Once again, we have included the main plot from \Cref{ch:sim-analysis} in \Cref{
 
 \begin{figure}[h]
     \centering
-    \appendW{figures/simulated/full_dct_ocean_unet_sim.pgf}{0.45}
+    \appendW{figures/simulated/full_dct_ocean_unet_sim.pgf}{0.48}
     \caption{Impact of the cold-start problem in simulation}
     \label{fig:concl-sim-impact}
 \end{figure}
@@ -87,10 +87,10 @@ To be able to do this, we have modified AccelSim's builtin NVBit tool.
 
 \begin{figure}[hb]
     \centering
-    \appendW{figures/simulated/kernel-11-acc.pgf}{0.45}
-    \appendW{figures/simulated/kernel-13-acc.pgf}{0.45}
-    \appendW{figures/simulated/kernel-114-acc.pgf}{0.45}
-    \appendW{figures/simulated/kernel-115-acc.pgf}{0.45}
+    \appendW{figures/simulated/kernel-11-acc.pgf}{0.48}
+    \appendW{figures/simulated/kernel-13-acc.pgf}{0.48}
+    \appendW{figures/simulated/kernel-114-acc.pgf}{0.48}
+    \appendW{figures/simulated/kernel-115-acc.pgf}{0.48}
     \caption{Accuracy of memory-only simulation}
     \label{fig:concl-mitig-mem-acc}
 \end{figure}
@@ -114,7 +114,7 @@ We approximated this number to be proportional to:
 With these observations, we came up with the following formula:
 \begin{align}
     IPC &= \frac{instructions}{cycles_f - \Delta} \\
-    \Delta &= \frac{accesses}{controllers * line} * fwd_{i-1} * (DRAM - L2)
+    \Delta &= \frac{accesses}{controllers \cdot line} \cdot fwd_{i-1} \cdot (DRAM - L2)
 \end{align}
 
 Where:

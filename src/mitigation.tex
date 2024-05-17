@@ -50,7 +50,7 @@ We have selected four kernels from the DCT8x8 workload with high IPC differences
 
 \begin{figure}
     \centering
-    \appendW{figures/simulated/dct_kernels}{}
+    \append{figures/simulated/dct_kernels}
     \caption{High IPC difference kernels in DCT}
     \label{fig:dct_kernels}
 \end{figure}
@@ -64,10 +64,10 @@ For each of these kernels, we used multiple simulations:
 
 \begin{figure}[t]
     \centering
-    \appendW{./figures/simulated/kernel-11-abs.pgf}{0.47}
-    \appendW{./figures/simulated/kernel-13-abs.pgf}{0.47}
-    \appendW{./figures/simulated/kernel-114-abs.pgf}{0.47}
-    \appendW{./figures/simulated/kernel-115-abs.pgf}{0.47}
+    \appendW{./figures/simulated/kernel-11-abs.pgf}{0.48}
+    \appendW{./figures/simulated/kernel-13-abs.pgf}{0.48}
+    \appendW{./figures/simulated/kernel-114-abs.pgf}{0.48}
+    \appendW{./figures/simulated/kernel-115-abs.pgf}{0.48}
     \append{./figures/simulated/mitigation_absolute}
     \caption{DCT Mitigation results (absolute IPC values)}
     \label{fig:mitig_abs}
@@ -75,10 +75,10 @@ For each of these kernels, we used multiple simulations:
 
 \begin{figure}[t]
     \centering
-    \appendW{./figures/simulated/kernel-11-acc.pgf}{0.47}
-    \appendW{./figures/simulated/kernel-13-acc.pgf}{0.47}
-    \appendW{./figures/simulated/kernel-114-acc.pgf}{0.47}
-    \appendW{./figures/simulated/kernel-115-acc.pgf}{0.47}
+    \appendW{./figures/simulated/kernel-11-acc.pgf}{0.48}
+    \appendW{./figures/simulated/kernel-13-acc.pgf}{0.48}
+    \appendW{./figures/simulated/kernel-114-acc.pgf}{0.48}
+    \appendW{./figures/simulated/kernel-115-acc.pgf}{0.48}
     \append{./figures/simulated/mitigation_accuracy}
     \caption{DCT Mitigation results (accuracy)}
     \label{fig:mitig_acc}
@@ -216,7 +216,7 @@ To this end, we will use the following metrics, all of which can be gathered by 
 Combining all of these, we came up with the following formula:
 \begin{align}
     IPC &= \frac{instructions}{cycles_f - \Delta} \\
-    \Delta &= \frac{accesses}{controllers * line} * fwd_{i-1} * (DRAM - L2)
+    \Delta &= \frac{accesses}{controllers * line} \cdot fwd_{i-1} \cdot (DRAM - L2)
 \end{align}
 Here, $IPC$ is the final (corrected) IPC value, $instructions$ is the number of dynamically executed instructions, $cycles_f$ is the number of cycles when simulating the kernel with cold caches (in flushed mode), and $\Delta$ is the correction factor.
 We use $accesses$ for the number of unique DRAM accesses, $controllers$ for the memory controller occupancy, $line$ for the size of a cache line, and $reuse$ for the (forward) reuse factor.
@@ -253,7 +253,7 @@ Additionally, this data is output for both reads and writes.
 
 We compute the evenly used controllers from the average occupancy of each controller ($occ_{ctrl}$) as follows:
 \begin{align}
-    occ_{ctrl} &= \frac{\sum_{i = 1}^{banks}{reads_{ctrl, i}} + \sum_{i = 1}^{banks}{writes_{ctrl, i}}}{2 * banks} \\
+    occ_{ctrl} &= \frac{\sum_{i = 1}^{banks}{reads_{ctrl, i}} + \sum_{i = 1}^{banks}{writes_{ctrl, i}}}{2 \cdot banks} \\
     controllers &= \frac{\sum_{ctrl}{occ_{ctrl}}}{\max_{ctrl}{occ_{ctrl}}}
 \end{align}
 
@@ -274,7 +274,7 @@ OceanFFT, however, used almost all controllers evenly.
 \begin{figure}[h]
     \centering
     \appendW{figures/mitigation/comp-box.pgf}{}
-    \appendW{figures/mitigation/comp-table}{}
+    \appendW{figures/mitigation/comp-table}{0.9}
     \caption{Comparison of mitigation methods}
     \label{fig:mitig-compare}
 \end{figure}

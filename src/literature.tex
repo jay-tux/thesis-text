@@ -74,7 +74,7 @@ AccelSim is a very flexible and detailed simulator, which can be used to simulat
 It is also able to simulate a wide range of cache designs, and can be extended to support domain-specific pipelines.
 The correlation generation tool and configuration tuner are used to verify the simulator's accuracy, and to extend it to newer architectures.
 
-The current version can simulate up to a speed of 122\thinspace500 warp instructions per second, which still improves upon the previous GPGPU-Sim version.
+The current version can simulate up to a speed of 12\thinspace500 warp instructions per second, which still improves upon the previous GPGPU-Sim version.
 Half of this speedup comes from the trace-driven mode, which avoids overhead of functional execution.
 The user can also set kernel-based checkpoints to avoid simulation of non-interesting regions.
 
@@ -184,12 +184,13 @@ The main issues with PKA, as outlined in the Sieve paper~\cite{sieve}, are:
 \end{itemize}
 
 The Sieve technique improves upon both steps of the PKS phase.
-Firstly, it only requires a few easily-gathered metrics from the application to cluster the kernels.
+It attempts to speed up the profiling step by only requiring a few easily-gathered metrics from the application to cluster the kernels.
 These metrics (kernel name, invocation ID, and number of dynamically executed instructions) can be obtained from the lightweight profiler, which reduces profiling time.
 This is a much lower one-time cost than PKA requires, opening up many more applications that were prohibitively expensive to profile using PKA\ .
 
 \subsection{Strata}\label{subsec:strata}
-Secondly, Sieve uses strata-based clustering to reduce variability and select a better representative kernel.
+To reduce the variability in cycle count, Sieve uses strata-based clustering.
+This allows for a better representative kernel to be selected.
 Within each stratum, only instances (or invocations) of the same kernel are present, while also keeping the amount of dynamically executed instructions as similar as possible.
 The strata are organized in three tiers:
 \begin{enumerate}

@@ -1,12 +1,12 @@
-  \begin{tabular}{|l|c|c|c|c|}
+  \begin{tabular}{|l|c|c|c|c|c|}
     \hline
-    \textbf{Kernel Name} & \textbf{IPC Difference} & \textbf{Weight} & \textbf{Forward Data Reuse (\%)} & \textbf{Backward Data Reuse (\%)} \\
+    \textbf{Kernel Name} & \textbf{IPC Difference} & \textbf{Weight} & \textbf{Forward Reuse (\%)} & \textbf{Backward Reuse (\%)} & \textbf{Memory footprint} \\
     \hline
     \hline 
-    \verb|generateSpectrumKernel| & 0.28\% & 44.43\% & 12.50\% & n/a \\
-    \verb|regular_fft| & \textit{31.40\%} & \textit{21.69\%} & \textit{50.00\%} & \textit{25.00\%} \\
-    \verb|vector_fft| & 0.45\% & 17.81\% & 0.00\% & 25.00\% \\
-    \verb|updateHeightmapKernel| & 0.01\% & 6.00\% & 25.00\% & 0.00 \% \\
-    \verb|calculateSlopeKernel| & 0.00\% & 10.08\% & n/a & 18.18\% \\
+    \verb|generateSpectrumKernel| & 0.28\% & 44.43\% & 12.50\% & n/a & 33\ 564\ 671 \\
+    \verb|regular_fft| & \textit{31.40\%} & \textit{21.69\%} & \textit{50.00\%} & \textit{25.00\%} & \textit{16\ 779\ 666} \\
+    \verb|vector_fft| & 0.45\% & 17.81\% & 0.00\% & 25.00\% & 16\ 780\ 062 \\
+    \verb|updateHeightmapKernel| & 0.01\% & 6.00\% & 25.00\% & 0.00 \% & 16\ 777\ 216 \\
+    \verb|calculateSlopeKernel| & 0.00\% & 10.08\% & n/a & 18.18\% & 46\ 137\ 344 \\
     \hline 
   \end{tabular}

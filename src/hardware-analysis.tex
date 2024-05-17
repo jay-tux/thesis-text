@@ -17,8 +17,8 @@ This proved easier said than done, as the kernel IDs were not consistent between
 
 \begin{figure}
     \centering
-    \append{./figures/hardware/mlperf_cactus_boxplot.pgf}
-    \append{./figures/hardware/dct_ocean_boxplot.pgf}
+    \appendW{./figures/hardware/mlperf_cactus_boxplot.pgf}{0.75}
+    \appendW{./figures/hardware/dct_ocean_boxplot.pgf}{0.75}
     \caption{Relative IPC difference}
     \label{fig:ipc_diff}
 \end{figure}
@@ -58,15 +58,15 @@ In order to get a better view of the impact of the cold start problem, we have a
 
 \begin{figure}[ht]
     \centering
-    \append{figures/hardware/mlperf_cactus_weight.pgf}
-    \append{figures/hardware/table_mlperf_cactus}
+    \appendW{figures/hardware/mlperf_cactus_weight.pgf}{0.75}
+    \appendW{figures/hardware/table_mlperf_cactus}{0.75}
     \caption{Weighted IPC differences for MLPerf and Cactus}
     \label{fig:weight_ipc_diff}
 \end{figure}
 \begin{figure}[htb]
     \centering
-    \append{figures/hardware/dct_ocean.pgf}
-    \append{figures/hardware/table_dct_ocean}
+    \appendW{figures/hardware/dct_ocean.pgf}{0.75}
+    \appendW{figures/hardware/table_dct_ocean}{0.75}
     \caption{Weighted IPC differences for DCT}
     \label{fig:weight_ipc_dct}
 \end{figure}
@@ -92,16 +92,16 @@ For each kernel, we have profiled all memory instructions and extracted the uniq
 
 \begin{figure}[htb]
     \centering
-    \appendCW{./figures/hardware/dct_forward_reuse.pgf}{Forward data reuse}{fig:dct_forward_reuse}{0.6}
-    \appendCW{./figures/hardware/dct_backward_reuse.pgf}{Backward data reuse}{fig:dct_backward_reuse}{0.6}
+    \appendCW{./figures/hardware/dct_forward_reuse.pgf}{Forward data reuse}{fig:dct_forward_reuse}{0.75}
+    \appendCW{./figures/hardware/dct_backward_reuse.pgf}{Backward data reuse}{fig:dct_backward_reuse}{0.75}
     \caption{Inter-kernel data reuse in DCT}
     \label{fig:dct_reuse}
 \end{figure}
 
 \begin{figure}[hbt]
     \centering
-    \appendCW{./figures/hardware/recg_forward_reuse.pgf}{Forward data reuse}{fig:recg_forward_reuse}{0.6}
-    \appendCW{./figures/hardware/recg_backward_reuse.pgf}{Backward data reuse}{fig:recg_backward_reuse}{0.6}
+    \appendCW{./figures/hardware/recg_forward_reuse.pgf}{Forward data reuse}{fig:recg_forward_reuse}{0.75}
+    \appendCW{./figures/hardware/recg_backward_reuse.pgf}{Backward data reuse}{fig:recg_backward_reuse}{0.75}
     \caption{Inter-kernel data reuse in recursiveGaussian}
     \label{fig:recg_reuse}
 \end{figure}
