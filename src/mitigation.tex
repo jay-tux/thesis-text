@@ -50,7 +50,7 @@ We have selected four kernels from the DCT8x8 workload with high IPC differences
 
 \begin{figure}
     \centering
-    \append{figures/simulated/dct_kernels}
+    \append{figures/mitigation/dct_kernels}
     \caption{High IPC difference kernels in DCT}
     \label{fig:dct_kernels}
 \end{figure}
@@ -64,22 +64,22 @@ For each of these kernels, we used multiple simulations:
 
 \begin{figure}[t]
     \centering
-    \appendW{./figures/simulated/kernel-11-abs.pgf}{0.48}
-    \appendW{./figures/simulated/kernel-13-abs.pgf}{0.48}
-    \appendW{./figures/simulated/kernel-114-abs.pgf}{0.48}
-    \appendW{./figures/simulated/kernel-115-abs.pgf}{0.48}
-    \append{./figures/simulated/mitigation_absolute}
+    \appendW{./figures/mitigation/kernel-11-abs.pgf}{0.48}
+    \appendW{./figures/mitigation/kernel-13-abs.pgf}{0.48}
+    \appendW{./figures/mitigation/kernel-114-abs.pgf}{0.48}
+    \appendW{./figures/mitigation/kernel-115-abs.pgf}{0.48}
+    \append{./figures/mitigation/mitigation_absolute}
     \caption{DCT Mitigation results (absolute IPC values)}
     \label{fig:mitig_abs}
 \end{figure}
 
 \begin{figure}[t]
     \centering
-    \appendW{./figures/simulated/kernel-11-acc.pgf}{0.48}
-    \appendW{./figures/simulated/kernel-13-acc.pgf}{0.48}
-    \appendW{./figures/simulated/kernel-114-acc.pgf}{0.48}
-    \appendW{./figures/simulated/kernel-115-acc.pgf}{0.48}
-    \append{./figures/simulated/mitigation_accuracy}
+    \appendW{./figures/mitigation/kernel-11-acc.pgf}{0.48}
+    \appendW{./figures/mitigation/kernel-13-acc.pgf}{0.48}
+    \appendW{./figures/mitigation/kernel-114-acc.pgf}{0.48}
+    \appendW{./figures/mitigation/kernel-115-acc.pgf}{0.48}
+    \append{./figures/mitigation/mitigation_accuracy}
     \caption{DCT Mitigation results (accuracy)}
     \label{fig:mitig_acc}
 \end{figure}
@@ -128,7 +128,7 @@ This causes all memory instructions to be executed serially, resulting in a cert
             ld 0x0028
         \end{minted}
     \end{minipage}
-    \appendW{figures/simulated/interleaving-1}{0.66}
+    \appendW{figures/mitigation/interleaving-1}{0.66}
     \caption{Interleaving example}
     \label{fig:example2a}
 \end{figure}
@@ -153,7 +153,7 @@ See \Cref{fig:example2b} for the result of that execution.
             ld 0x0028
         \end{minted}
     \end{minipage}
-    \appendW{figures/simulated/interleaving-2}{0.45}
+    \appendW{figures/mitigation/interleaving-2}{0.45}
     \caption{Interleaving example - memory only}
     \label{fig:example2b}
 \end{figure}
@@ -164,7 +164,7 @@ The opposite happens when we only simulate memory instructions (full memory warm
 This can explain the slight inaccuracy we see for full memory warmup.
 \begin{figure}[h]
     \centering
-    \appendW{figures/simulated/interleaving-delta}{0.36}
+    \appendW{figures/mitigation/interleaving-delta}{0.36}
     \caption{Interleaving example - cache state differences}
     \label{fig:example2_final}
 \end{figure}
