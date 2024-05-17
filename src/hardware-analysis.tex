@@ -2,7 +2,7 @@
 
 \section{Initial profiling}\label{sec:initial-profiling}
 Firstly, we need to quantify and detect whether the cold-start problem exists in GPGPU hardware.
-To this end, we have analyzed some workloads and benchmarks using the NVIDIA Nsight Compute tool.
+To this end, we have analyzed some workloads and benchmarks using the NVIDIA Nsight Compute~\cite{nsight} tool.
 This tool allows us to control the caches during the execution of an application.
 Additionally, we can gather detailed metrics, like IPC, for each kernel in the workload.
 
@@ -33,7 +33,7 @@ Below is a full list of all analyzed workloads:
     \begin{itemize}
         \item The ResNet50 model~\cite{resnet50},
         \item Both MobileNet and ResNet34 variants of the SSD model,
-        \item The Bidirectional Encoder Representations from Transformers (BERT)~\cite{bert}, and
+        \item The Bidirectional Encoder Representations for Transformers (BERT)~\cite{bert}, and
         \item The 3D U-Net model~\cite{3d-unet}
     \end{itemize}
     \item Four inputs to the 8x8 DCT implementation in the CUDA Samples (each labeled with their respective input).
@@ -111,11 +111,11 @@ We have analyzed both the forward and backward data reuse for each kernel:
 \begin{itemize}
     \item \textbf{Forward data reuse:} the amount of unique memory addresses in kernel $k_{i}$ that are reused by kernel $k_{i}$ (as seen in \Cref{fig:dct_forward_reuse}); i.e.
     \begin{align}
-        \frac{|\text{footprint } k_{i} \cap \text{footprint } k_{i+1}|}{|\text{footprint } k_{i}|}
+        fwd_i = \frac{|\text{footprint } k_{i} \cap \text{footprint } k_{i+1}|}{|\text{footprint } k_{i}|}
     \end{align}
     \item \textbf{Backward data reuse:} the amount of unique memory addresses in kernel $k_{i}$ that are also present in kernel $k_{i-1}$ (as seen in \Cref{fig:dct_backward_reuse}); i.e.
     \begin{align}
-        \frac{|\text{footprint } k_{i-1} \cap \text{footprint } k_i|}{|\text{footprint } k_i|}
+        bwd_i = \frac{|\text{footprint } k_{i-1} \cap \text{footprint } k_i|}{|\text{footprint } k_i|}
     \end{align}
 \end{itemize}
 

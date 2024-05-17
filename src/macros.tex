@@ -3,19 +3,25 @@
 \newcommand{\pgfHeaderSize}{20.000000}
 
 \newcommand{\append}[1]{
-    \begin{minipage}[c]{0.66\textwidth}
+    \begin{minipage}[c]{0.66\linewidth}
+        \resizebox{\textwidth}{!}{\input{#1}}
+    \end{minipage}
+}
+
+\newcommand{\appendFW}[2]{
+    \begin{minipage}[c]{#2}
         \resizebox{\textwidth}{!}{\input{#1}}
     \end{minipage}
 }
 
 \newcommand{\appendW}[2]{
-    \begin{minipage}[c]{#2\textwidth}
+    \begin{minipage}[c]{#2\linewidth}
         \resizebox{\textwidth}{!}{\input{#1}}
     \end{minipage}
 }
 
 \newcommand{\appendC}[3]{
-    \begin{subfigure}{0.66\textwidth}
+    \begin{subfigure}{0.66\linewidth}
         \resizebox{\textwidth}{!}{\input{#1}}
         \caption{#2}
         \label{#3}
@@ -23,7 +29,7 @@
 }
 
 \newcommand{\appendCW}[4]{
-    \begin{subfigure}{#4\textwidth}
+    \begin{subfigure}{#4\linewidth}
         \resizebox{\textwidth}{!}{\input{#1}}
         \caption{#2}
         \label{#3}

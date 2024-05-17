@@ -10,12 +10,20 @@
 \usepackage{tikz}
 \usepackage{xcolor}
 \usepackage{caption}
-\usepackage[outputdir=../out/abstract]{minted}
+\usepackage[outputdir=../../out/abstract]{minted}
 \captionsetup[listing]{position=top}
 \usepackage{standalone}
 \usetikzlibrary{shapes,arrows,positioning,backgrounds,calc,intersections,calc}
 \usepackage[colorlinks]{hyperref}
 \usepackage{fontspec}
+\usepackage{pgfplots}
+\usepackage{pgf}
+\usepackage{lmodern}
+\usepackage{subcaption}
+\usepackage{lscape}
+\usepackage{placeins}
+\usepackage{arydshln}
+\usepackage{cleveref}
 \newcommand*{\acronym}[1]{{\addfontfeature{Letters=UppercaseSmallCaps}#1}}
 
 \title{Quantifying and Mitigating the Cold-Start Problem in GPU Simulation}
@@ -29,6 +37,12 @@
 }
 \makeatother
 
+\def\mathdefault#1{#1}
+\everymath=\expandafter{\the\everymath\displaystyle}
+\makeatletter\@ifpackageloaded{underscore}{}{\usepackage[strings]{underscore}
+\usepackage{listings}}\makeatother
+
+
 \fntext[fn1]{Ghent University}
 \fntext[fn2]{Department of Electronics and Information Systems, Faculty of Engineering and Architecture, Ghent University}
 
@@ -37,12 +51,315 @@
 \author{Seyyed Hossein SeyyedAghaei Rezaei \fnref{fn2}}
 \author{Lieven Eeckhout \fnref{fn2}}
 
+\input{../macros}
+
 % Document
 \begin{document}
     \begin{abstract}
+        Every year, more and more AI and machine learning papers are published~\cite{aiindex}.
+        Many of these machine learning algorithms rely on GPUs to train their models.
+        Additionally, many other workloads, ranging from molecular simulation to graph traversal, benefit greatly from the parallel processing power of GPUs.
+        This increased demand for parallel processing has led to an increasing need for innovation, constantly improving GPUs.
+        In order to verify that these changes are improvements, simulators~\cite{accelsim} are used.
+        Modern simulation techniques rely on sampling~\cite{pks, sieve}.
+        These sampling techniques often assume a perfectly warmed-up hardware state, however this is not always the case.
+        This article measures the impact of the cold-start problem on GPU workloads (both in hardware and in simulator), and proposes some mitigations. % TODO: perhaps only one?
     \end{abstract}
 
     \maketitle
 
+    \section{Introduction}\label{sec:introduction}
+    Since their inception in 1968, by the \textit{Evans and Sutherland Computer Corporation}, GPUs have come a long way~\cite{gpu-evolution}.
+    Gone are the fixed-function pipelines of the past, replaced by the programmable shaders of today.
+    Machines that used to be the size of a room are now small enough chips to be embedded onto CPUs.
+
+    2007 introduced the CUDA platform~\cite{cuda, cuda-prog}, which allowed for general-purpose computing on GPUs.
+    This was a turning point for the GPU industry, as it allowed for the use of GPUs in a wide range of applications.
+    Today, GPUs are used in a wide range of applications, from machine learning to molecular dynamics simulations.
+
+    This increase in demand for parallel processing has led to an increase in the complexity of GPUs.
+    To further improve on the design and micro-architecture of these complex chips, changes have to be rigorously verified.
+    This is where simulators come in.
+    Building a new GPU from the ground up, in silicon, is costly and very time-consuming, which does not lend itself to a fast-paced feedback loop.
+    Instead, simulators are used to model the behavior of the chip, allowing for quick verification that changes are, in fact, improvements.
+
+    Many of these simulators are proprietary, unreleased to the public.
+    However, one that is frequently used in academia is Accel-Sim~\cite{accelsim}.
+    Accel-Sim is a very flexible simulator, allowing for a wide range of hardware platforms to be simulated.
+    It is also rather accurate, within the limits set by opaque hardware specifications.
+
+    The main drawback is that simulating an entire workload or benchmark could easily take weeks, if not months~\cite{pks}.
+    To speed up this process, sampling techniques are used.
+    A subset of the kernels in the workload is selected, and only these kernels are simulated.
+    If these kernels are sampled correctly and are representative of the entire workload, the results can be extrapolated to the entire workload.
+
+    Some of these techniques are \textit{Principal Kernel Analysis}~\cite{pks} and \textit{Sieve}~\cite{sieve}.
+    Based on profiler data, they cluster all the kernels in the workload.
+    From each of these clusters, a representative is selected to be simulated.
+
+    The PKA technique goes even further, by projecting the performance of the first part of a kernel onto the rest of the kernel.
+    The main idea is that, for almost any kernel, the IPC stabilizes after a certain number of instructions.
+    Once this stabilization is detected, the simulation is halted, and it is assumed that the rest of the kernel will have the same IPC\@.
+
+    However, these sampling techniques assume that the hardware is in a perfectly warmed-up state.
+    This is not always the case, since intermittent kernels are omitted.
+    These omitted kernels might affect the hardware state, most notable the caches and/or TLBs, which in turn affects the performance of the kernels that are simulated.
+    This problem is not unique to GPU simulation, but is also present in CPU simulation~\cite{blrl}, and it is known as the \textit{cold-start problem}.
+
+    While the cold-start problem has been extensively studied in CPU simulation, little to no research has been done on its impact on GPU simulation.
+    In the context of CPU simulation, solutions to the cold-start problem are based on warming up the data structures in the simulator, by simulating additional instructions.
+    However, additional simulation is expensive, as simulation is a lot slower than execution in hardware.
+    To mitigate this problem in CPU simulation, a number of techniques have been proposed~\cite{cpu-checkpoint,cpu-stitch-prime,cpu-merge-stitch-prime,cpu-nsl,cpu-mse,cpu-mrrl,blrl}.
+    Another avenue that has been explored is the search for a correction factor~\cite{cpu-corr-fac}, which avoids additional simulation by analyzing the instruction trace.
+
+    This work makes the following contributions:
+    \begin{itemize}
+        \item It quantifies the impact of the cold-start problem on GPU workloads.
+        To this end, we will look at both hardware (in-silicon) results, and simulator results.
+        \item It proposes a number of mitigations to the cold-start problem in GPU simulation, inspired by the main avenues used in CPU simulation.
+        We will also compare these methods against one another, to see which one is the most effective. % TODO: rewrite if only one
+    \end{itemize}
+
+    \section{The cold-start problem in hardware}\label{sec:hw}
+    Using NVIDIA's Nsight Compute~\cite{nsight} tool, we were able to profile a number of workloads\footnote{Due to time constraints, only the first 20\ 000 kernels of each workload were executed.}.
+    To profile these workloads, an NVIDIA GeForce RTX 3080~\cite{nvidia-wp} was used.
+    This GPU has 68 SM cores, and 6 MB of L2 cache.
+
+    Each workload was profiled twice: once normally, as it would run in hardware, and once with the caches flushed between kernel invocations.
+    Nsight Compute supports this option by using the \mintinline{bash}{--cache-control=all} argument.
+
+    Below is a list of workloads that were profiled:
+    \begin{itemize}
+        \item The following benchmarks from the Cactus suite~\cite{cactus}:
+        \begin{itemize}
+            \item Gromacs~\cite{gromacs} and LAMMPS~\cite{LAMMPS} (with both rhodo (LMR) and colloid (LMC) inputs); two molecular simulation workloads,
+            \item Gunrock~\cite{gru} on both road (GRU) and social networks (GST),
+            \item DCGAN, neural style transform (NST)~\cite{nst}, reinforcement learning (RFL), spatial transformer (SPT)~\cite{spt} and language translation (LGT) from PyTorch, and
+        \end{itemize}
+        \item The following MLCommons benchmarks (from their MLPerf® Inference v2.0 collection):
+        \begin{itemize}
+            \item The ResNet50 model~\cite{resnet50},
+            \item Both MobileNet and ResNet34 variants of the SSD model,
+            \item The Bidirectional Encoder Representations for Transformers (BERT)~\cite{bert}, and
+            \item The 3D U-Net model~\cite{3d-unet}
+        \end{itemize}
+        \item The DCT implementation present in the CUDA Samples~\cite{samples}.
+    \end{itemize}
+
+    \begin{figure}[ht]
+        \centering
+        \appendW{../figures/abstract/box_workloads_hw.pgf}{}
+        \caption{Hardware IPC differences}
+        \label{fig:hw-ipc}
+    \end{figure}
+
+    You can find the results of this experiment in \Cref{fig:hw-ipc}.
+    This figure shows the relative IPC difference (relative to the non-flushed IPC: $\frac{IPC_f - IPC_{nf}}{IPC_{nf}} \cdot 100\%$) for each workload listed above.
+    We note that the most promising workloads are DCGAN and Gunrock (on road traversal) from the Cactus suite, along with DCT from the CUDA Samples.
+
+    However, sampling methods like \textit{Sieve}~\cite{sieve} rely on a kernel's weight; i.e.\ the number of instructions in that kernel relative to the total number of instructions in the workload.
+    Additionally, for each cluster computed by such methods, the weights of the kernels in that cluster are summed to get the cluster's weight.
+    That cluster weight is then used when generalizing the results to the entire workload; i.e.\ a weighted average is taken.
+    When we take these weights into account, we get a different result.
+
+    \begin{figure}[hb]
+        \centering
+        \appendW{../figures/abstract/bar_workloads_hw.pgf}{}
+        \caption{Weighted hardware IPC differences}
+        \label{fig:w-hw-ipc}
+    \end{figure}
+
+    In \Cref{fig:w-hw-ipc}, you can see the weighted IPC differences for each workload.
+    For each workload, we have identified all kernel invocations with at least 5\% (resp. 10\%, 15\%, and 20\%) IPC difference.
+    The weights of all of those kernels were summed up, which is what you see.
+    For 3D-UNet, for example, kernels worth around 10\% of the workload have an IPC difference of between 15\% and 20\%.
+
+    Using that figure, we get a slightly different set of affected workloads.
+    Moving forward, we will focus mostly on the DCT and 3D-UNet workloads, but some of the Cactus benchmarks are still mildly affected.
+
+    \subsection{Data Reuse}\label{subsec:data-reuse}
+    A factor that will prove to be rather important, is the degree of data reuse between kernels.
+    We will focus mostly on the forward data reuse; i.e.\ the data that is used by a kernel, then used again by the next.
+    For any kernel $k_i$, we define the forward data reuse $fwd_i$ as:
+    \begin{align}
+        fwd_i = \frac{|M_i \cap M_{i+1}|}{|M_i|}
+    \end{align}
+    Where $M_i$ is the memory footprint (the set of unique memory addresses accessed) of kernel $k_i$.
+
+    In \Cref{fig:fwd-hw}, we have visualized the forward data reuse for two workloads.
+    The first (\Cref{fig:dct-fwd}) is the DCT implementation which we already mentioned, and the second is the recursiveGaussian implementation from the CUDA SDK (\Cref{fig:recg-fwd}).
+
+    As you can see, the inter-kernel data reuse in the DCT application is rather high, consistently hitting 100\%.
+    On the other hand, the recursiveGaussian application caps out around 50\%.
+
+    \begin{figure}[ht]
+        \centering
+        \appendCW{../figures/hardware/dct_forward_reuse.pgf}{Forward data reuse for DCT}{fig:dct-fwd}{0.48}
+        \appendCW{../figures/hardware/recg_forward_reuse.pgf}{Forward data reuse for recursiveGaussian}{fig:recg-fwd}{0.48}
+        \caption{Forward data reuse}
+        \label{fig:fwd-hw}
+    \end{figure}
+
+
+    \section{The cold-start problem in Accel-Sim}\label{sec:sim}
+    After profiling the workloads in hardware, we moved on to simulating them in Accel-Sim~\cite{accelsim}.
+    Accel-Sim is a very flexible simulator, allowing for a wide range of hardware platforms to be simulated.
+    It is built on top of the GPGPU-Sim simulator~\cite{gpgpu-sim}, which is a cycle-accurate simulator.
+
+    Before discussing the results, we will first explain the simulator setup.
+    We used the (pre-tested) NVIDIA GeForce RTX3070 configuration.
+    Some of the more interesting configuration parameters are shown in \Cref{fig:config-sim}.
+
+    \begin{figure}[h]
+        \centering
+        \append{../figures/simulated/gpu_config}
+        \caption{Simulator configuration parameters}
+        \label{fig:config-sim}
+    \end{figure}
+
+    Once again, we ran each workload twice: once without flushing the caches between kernel invocations, and once with the caches flushed.
+    Accel-Sim supports this option by using the \mintinline{bash}{--flush-l1 --flush-l2} arguments.
+
+    We decided to limit our experiments to the DCT and 3D-UNet workloads, as those were the most promising in hardware.
+    Another workload that showed promise was the OceanFFT workload from the CUDA SDK\@.
+    For feasibility, we limited each workload's execution to 130 kernels (which is only a limit for the 3D-UNet workload).
+
+    \begin{figure}[hb]
+        \centering
+        \appendW{../figures/simulated/full_dct_ocean_unet_sim.pgf}{}
+        \caption{Weighted simulated IPC differences}
+        \label{fig:w-sim-ipc}
+    \end{figure}
+
+    The results of this experiment are shown in \Cref{fig:w-sim-ipc}.
+    Once again, we took into account the weights of each kernel, showing the weighted IPC differences for each workload.
+
+    From this, we gather that the cold-start problem is much less severe in the simulator than in hardware.
+    We assume that this is caused by the fact that the simulator is an idealized version of the hardware.
+    Some details might have gotten lost, which in turn might have mitigated the cold-start problem.
+    A lot of hardware details are gated by the industry, and are not publicly available, so the simulator developers have to rely on micro-benchmarks to attempt to reverse-engineer these details.
+
+    \subsection{OceanFFT}\label{subsec:oceanfft}
+    Besides suffering a lot from the cold-start problem, the OceanFFT workload also has an oddity.
+    As you can see in \Cref{fig:sim-ocean}, the IPC values are higher when we flush the caches.
+
+    \begin{figure}[ht]
+        \centering
+        \appendW{../figures/abstract/ocean}{}
+        \caption{OceanFFT IPC values}
+        \label{fig:sim-ocean}
+    \end{figure}
+
+    This is something we would not expect; we expect the caches to speed up execution, not slow it down.
+    The kernel that is impacted the most by the cold-start problem is the second one, which suffers approximately 31\% difference.
+
+    We assume that it runs faster with flushed caches because it only reuses a small fraction of the data from the previous kernel.
+    The first kernel has a memory footprint of 33.5 million addresses, of which the second kernel reuses only 12.5\% (4 million addresses).
+
+    If a lot of the cache lines are dirty, this causes a lot of write-backs, which might pile up in the memory hierarchy.
+    This can stall the memory pipeline, which in turn causes the processors to stall, reducing the IPC\@.
+
+    \section{Mitigations}\label{sec:mitig} % TODO: singular if only one
+    In order to mitigate the cold-start problem, we have come up with a number of solutions:
+    \begin{itemize}
+        \item \textbf{Perfect warmup:} a naive approach would be to simulate all preceding kernels, forcing the caches to be warm.
+        However, this goes directly against the idea of sampling, and slows down the simulation significantly.
+        \item \textbf{Memory-only warmup:} a more refined approach would be to only simulate the memory instructions of the preceding kernels.
+        This way, the caches are warmed up, but the simulation is still faster than simulating the entire kernel.
+        Additionally, instead of simulating each preceding kernel, we limit ourselves to the most recent ones, as we expect these to have the biggest impact, due to temporal locality.
+        \item \textbf{Correction factor:} using data from the instruction trace, as well as the simulator output, we can compute a correction factor.
+        This will prove to be able to increase the accuracy of very inaccurate kernels, at the cost of a slightly lower median accuracy.
+    \end{itemize}
+
+    \subsection{Memory simulation}\label{subsec:mitig-mem}
+    Using a modified version of the Accel-Sim tracing tool, we were able to generate an additional trace for each kernel.
+    This trace includes only the memory instructions, which can be used to quickly warm up the caches.
+
+    We have identified four DCT kernels which suffer a lot from the cold-start problem, and have simulated them with and without the memory-only warmup.
+    Up to ten preceding kernels were simulated (in memory-only mode).
+    Additionally, we compare these with the perfect warmup (where every single preceding instruction is simulated), as well as the full memory warmup (where all memory instructions from all preceding kernels are simulated).
+
+    \begin{figure}
+        \centering
+        \appendW{../figures/mitigation/kernel-11-acc.pgf}{0.75}
+        \appendW{../figures/mitigation/kernel-13-acc.pgf}{0.75}
+        \appendW{../figures/mitigation/kernel-114-acc.pgf}{0.75}
+        \appendW{../figures/mitigation/kernel-115-acc.pgf}{0.75}
+        \caption{DCT mitigation results}
+        \label{fig:mitig-dct}
+    \end{figure}
+
+    Two main observations can be made from \Cref{fig:mitig-dct}:
+    \begin{enumerate}
+        \item A single kernel warmup is usually more than enough to warm up the caches.
+        The accuracy of all the kernels above increased to at least 97\%.
+        \item There is still a difference between the perfect accuracy, and the full memory accuracy.
+        We assume that this is due to the instructions being re-ordered: since intermittent instructions (e.g.\ ALU instructions) are removed from the traces, some memory instructions might get re-ordered.
+        This results in a different cache state, which might in turn affect the simulator results.
+    \end{enumerate}
+
+    \subsection{Correction factor}\label{subsec:mitig-corr}
+    We have come up with a formula that is able to partially mitigate the cold-start problem, without any additional simulation.
+    It is based on the following observations:
+    \begin{itemize}
+        \item We can estimate an upper bound for the impact of the cold-start problem by looking at the number of cold misses.
+        A subset of these misses will be due to the cold-start problem; while another part will be due to the inherent nature of the workload.
+        \item The fraction of cold misses that are due to the cold-start problem is proportional to the degree of forward data reuse.
+        Only reused accesses can be sped up by caches, so these are the only ones that can be affected by the cold-start problem.
+        \item Multiple memory requests can be served in parallel by the DRAM controllers.
+        This means that we should take into account the memory controller occupancy.
+        \item The number of cycles lost due to the cold-start problem is proportional to the difference in latency between DRAM and the L2 cache.
+    \end{itemize}
+
+    Using these observations, we have come up with the following formula:
+    \begin{align}
+        IPC &= \frac{insn}{cycles_f - \Delta} \\
+        \Delta &= \frac{accesses}{controllers \cdot line} \cdot fwd_{i-1} \cdot (DRAM - L2)
+    \end{align}\footnote{Since we use a subtractive factor for the number of cycles, this formula can not be used for OceanFFT.}
+
+    Where:
+    \begin{itemize}
+        \item $IPC$ is the final, corrected IPC;
+        \item $insn$ is the number of instructions dynamically executed by the kernel;
+        \item $cycles_f$ is the number of cycles used in the flushed case;
+        \item $\Delta$ is the correction factor;
+        \item $accesses$ is the number of unique DRAM accesses in the kernel (e.g.\ the number of memory requests due to cold misses);
+        \item $controllers$ is the number of memory controllers, weighted by their occupancy;
+        \item $line$ is the cache line size;
+        \item $fwd_{i-1}$ is the forward data reuse of the \textit{previous} kernel; and
+        \item $DRAM$ and $L2$ are the latencies of the DRAM and L2 cache, respectively.
+    \end{itemize}
+
+    \subsection{Comparison}\label{subsec:mitig-compare}
+    \begin{figure}[hb]
+        \centering
+        \appendW{../figures/mitigation/comp-box.pgf}{}
+        \caption{Comparison of mitigations}
+        \label{fig:mitig-compare}
+    \end{figure}
+
+    In \Cref{fig:mitig-compare}, we have compared the different mitigation strategies.
+    As you can see, both mitigations are able to eliminate the suffering kernels.
+    However, the correction factor does suffer from a lower median accuracy.
+    Simulating the memory instructions from the previous kernel, however, is a very accurate approach for a rather low computational cost.
+    This is the most promising mitigation strategy, and the one we recommend going forward.
+
+    \section{Conclusion}\label{sec:concl}
+    In this article, we have quantified the impact of the cold-start problem on GPU workloads.
+    We started by analyzing the impact in hardware, seeing that it is an issue for a number of workloads.
+    We have made a note on the importance of data reuse, and how it affects the cold-start problem.
+
+    After that, we moved on to simulating the workloads in Accel-Sim.
+    We have seen that the cold-start problem is much less severe in the simulator than in hardware, but it is still present.
+    An unexpected result was the OceanFFT workload, which ran faster with flushed caches.
+
+    Finally, we have looked into some mitigation strategies.
+    The most promising of these is based on additional simulation, and artificial warming of the caches.
+    This method managed to improve the accuracy drastically, without a significant computational cost.
+    The other avenue we explored was a correction factor, based on the number of cold misses and the degree of data reuse.
+    This method was able to eliminate the suffering kernels, but at the cost of a slightly lower median accuracy.
+
+    \bibliographystyle{ieeetr}
+    \bibliography{abstract}
 
 \end{document}
