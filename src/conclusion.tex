@@ -12,20 +12,10 @@ From this, we have concluded that the cold-start problem is a real issue, affect
 
 \subsection{The cold-start problem in hardware}\label{subsec:cold-start-in-hardware}
 We have analyzed the cold-start problem in real hardware, and have shown that it is a real issue.
-Multiple workloads have shown a significant impact from the cold-start problem, see \Cref{fig:concl-unw-hw}.
+Multiple workloads have shown a significant impact from the cold-start problem.
 
 Additionally, we have weighted each kernel based on its instruction count, and have seen that its severity changes based on the kernel's weight.
-Taking into account is important because sampling methods like \textit{Sieve} uses these weights to select the kernels to simulate, see \Cref{fig:concl-w-hw}.
-
-For your reference, we have included the main plots from \Cref{ch:hw-analysis} below, in \Cref{fig:concl-hw-impact}.
-
-\begin{figure}[ht]
-    \centering
-    \appendCW{figures/hardware/mlperf_cactus_boxplot.pgf}{Unweighted impact}{fig:concl-unw-hw}{0.48}
-    \appendCW{figures/hardware/mlperf_cactus_weight.pgf}{Weighted impact}{fig:concl-w-hw}{0.48}
-    \caption{Impact of the cold-start problem in hardware}
-    \label{fig:concl-hw-impact}
-\end{figure}
+Taking into account is important because sampling methods like \textit{Sieve} uses these weights to select the kernels to simulate.
 
 Finally, we also introduced the notion of \textit{forward} and \textit{backward data reuse}.
 These were defined as the number of unique memory instructions that are reused.
@@ -43,25 +33,16 @@ The main ones we have analyzed were DCT, 3D U-Net, and OceanFFT\@.
 From this analysis, we have concluded that the cold-start problem is less severe in the simulator.
 The maximum impact of the cold-start problem on 3D-UNet drops from over 20\% to around 15\%.
 
-Once again, we have included the main plot from \Cref{ch:sim-analysis} in \Cref{fig:concl-sim-impact}.
-
-\begin{figure}[h]
-    \centering
-    \appendW{figures/simulated/full_dct_ocean_unet_sim.pgf}{0.48}
-    \caption{Impact of the cold-start problem in simulation}
-    \label{fig:concl-sim-impact}
-\end{figure}
+This is probably due to the fact that the simulator is an idealized version of the hardware.
+Additionally, some hardware details might have gotten lost in the conversion (especially if those details aren't publicly available).
 
 \subsubsection{OceanFFT}\label{subsubsec:oceanfft}
 The OceanFFT workload really stands out, compared to other workloads.
-Strangely enough, the simulator shows that it runs faster when the caches are flushed, as you can see in \Cref{fig:concl-ocean-odd}.
+Strangely enough, the simulator shows that it runs faster when the caches are flushed; especially the second kernel.
 
-\begin{figure}[hb]
-    \centering
-    \appendW{figures/simulated/ocean_issue}{}
-    \caption{OceanFFT oddity}
-    \label{fig:concl-ocean-odd}
-\end{figure}
+Our main assumption is that the first kernel fills up the caches with (dirty) unused data.
+When the second kernel starts, it needs to perform a lot of write-backs to DRAM, causing flooding in the memory hierarchy.
+In turn, this stalls the processors, causing the second kernel to run slower.
 
 This will prove problematic for one of our mitigations.
 
@@ -85,18 +66,9 @@ From the DCT workload, we have selected four kernels to analyze.
 For each of those kernels, we simulated the memory instructions of up to 10 previous kernels.
 To be able to do this, we have modified AccelSim's builtin NVBit tool.
 
-\begin{figure}[hb]
-    \centering
-    \appendW{figures/mitigation/kernel-11-acc.pgf}{0.48}
-    \appendW{figures/mitigation/kernel-13-acc.pgf}{0.48}
-    \appendW{figures/mitigation/kernel-114-acc.pgf}{0.48}
-    \appendW{figures/mitigation/kernel-115-acc.pgf}{0.48}
-    \caption{Accuracy of memory-only simulation}
-    \label{fig:concl-mitig-mem-acc}
-\end{figure}
-
 Our main conclusion from this analysis is that the memory-only simulation is very accurate.
-Even simulating only a single additional kernel results in incredible accuracy, see \Cref{fig:concl-mitig-mem-acc}.
+Even simulating only a single additional kernel results in incredible accuracy.
+This makes sense, because of the principle of memory locality.
 
 \subsection{Correction factor}\label{subsec:correction-factor}
 Our final avenue was the correction factor.
@@ -134,15 +106,6 @@ We found that this formula does manage to eliminate the (lower) outliers in IPC 
 
 \subsection{Comparison}\label{subsec:comparison}
 In the final section, \Cref{sec:sim-vs-corr}, we have compared the two methods.
-We have found that the memory-only simulation is the most accurate, but we also noted it is the most computationally expensive.
-Below is once again the boxplot showing our conclusion, see \Cref{fig:concl-mitig-comp}.
-
-\begin{figure}[hb]
-    \centering
-    \appendW{./figures/mitigation/comp-box.pgf}{}
-    \caption{Comparison between mitigations}
-    \label{fig:concl-mitig-comp}
-\end{figure}
-
+We have found that the memory-only simulation is the most accurate.
 A strange result here is that full memory simulation is less accurate than simulating just a single kernel.
 Since the numbers are quite close together, we assume that this is largely due to non-determinism in the simulator.

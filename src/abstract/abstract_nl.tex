@@ -1,0 +1,360 @@
+%! Author = jay
+%! Date = 5/21/24
+
+% Preamble
+\documentclass[5p,numvwe]{elsarticle}
+
+% Packages
+\usepackage[dutch]{babel}
+\usepackage{amsmath}
+\usepackage{tikz}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage[outputdir=../../out/abstract_nl]{minted}
+\captionsetup[listing]{position=top}
+\usepackage{standalone}
+\usetikzlibrary{shapes,arrows,positioning,backgrounds,calc,intersections,calc}
+\usepackage[colorlinks]{hyperref}
+\usepackage{fontspec}
+\usepackage{pgfplots}
+\usepackage{pgf}
+\usepackage{lmodern}
+\usepackage{subcaption}
+\usepackage{lscape}
+\usepackage{placeins}
+\usepackage{arydshln}
+\usepackage{cleveref}
+\newcommand*{\acronym}[1]{{\addfontfeature{Letters=UppercaseSmallCaps}#1}}
+
+\title{Meten en inperken van het koudestart-probleem by het simuleren van GPUs}
+
+\makeatletter
+\def\ps@pprintTitle{%
+    \let\@oddhead\@empty
+    \let\@evenhead\@empty
+    \def\@oddfoot{\footnotesize\itshape\hfill\today}%
+    \let\@evenfoot\@oddfoot
+}
+\makeatother
+
+\def\mathdefault#1{#1}
+\everymath=\expandafter{\the\everymath\displaystyle}
+\makeatletter\@ifpackageloaded{underscore}{}{\usepackage[strings]{underscore}
+\usepackage{listings}}\makeatother
+
+
+\fntext[fn1]{Ghent University}
+\fntext[fn2]{Department of Electronics and Information Systems, Faculty of Engineering and Architecture, Ghent University}
+
+\author{Jonas Sys \fnref{fn1}}
+\author{Mahmood Naderan-Tahan \fnref{fn2}}
+\author{Seyyed Hossein SeyyedAghaei Rezaei \fnref{fn2}}
+\author{Lieven Eeckhout \fnref{fn2}}
+
+\input{../macros}
+
+% Document
+\begin{document}
+    \begin{abstract}
+        Elk jaar worden er meer en meer AI- en machine learning-artikelen gepubliceerd~\cite{aiindex}.
+        Veel van deze machine learning-algoritmen vertrouwen op GPU's om hun modellen te trainen.
+        Bovendien profiteren veel andere workloads, variërend van moleculaire simulatie tot graaf-algoritmen, enorm van de parallelle verwerkingskracht van GPU's.
+        Deze toenemende vraag naar parallelle verwerking heeft geleid tot een grotere nood aan innovatie, waarbij GPU's voortdurend worden verbeterd.
+        Om te controleren dat deze veranderingen effectief verbeteringen zijn, worden simulators gebruikt~\cite{accelsim}.
+        Moderne technieken voor simulatie vertrouwen op \textit{sampling}~\cite{pks, sieve}.
+        Deze \textit{sampling}-technieken gaan er vaak van uit dat de hardware bij het begin perfect opgewarmd is, maar dat is niet altijd het geval.
+        In dit artikel zullen we de impact van het koudestart-probleem op GPU-\textit{workloads} (zowel in hardware als in de simulator) meten en enkele verbeteringen voorstellen.
+    \end{abstract}
+
+    \maketitle
+
+    \section{Introductie}\label{sec:introductie}
+    Sinds hun uitvinding in 1968 door de \textit{Evans and Sutherland Computer Corporation} zijn GPU's al veel veranderd~\cite{gpu-evolution}.
+    De \textit{fixed-function pipelines} van vroeger zijn vervangen door de programmeerbare shaders van vandaag.
+    Machines die vroeger zo groot waren als een kamer, zijn nu kleine chips die op CPU's kunnen worden ingebed.
+
+    In 2007 werd het CUDA-platform geïntroduceerd~\cite{cuda, cuda-prog}, dat meer algemene berekeningen op GPU's mogelijk maakte.
+    Dit was een keerpunt voor de GPU-industrie, omdat het gebruik van GPU's in een breed scala van toepassingen mogelijk maakte.
+    Vandaag de dag worden GPU's gebruikt in vele toepassingen, van machine learning tot moleculaire simulaties.
+
+    Deze toename in de vraag naar parallelle verwerking heeft geleid tot een toename van de complexiteit van GPU's.
+    Om het ontwerp en de micro-architectuur van deze complexe chips verder te verbeteren, moeten veranderingen grondig worden gecontroleerd.
+    Hier komen simulators in beeld.
+    Het bouwen van een nieuwe fysieke GPU, is duur en zeer tijdrovend, waardoor een snel feedbackproces niet mogelijk is.
+    In plaats daarvan worden simulators gebruikt om het gedrag van de chip te modelleren, zodat snel kan worden geverifieerd dat veranderingen inderdaad verbeteringen zijn.
+
+    Veel van deze simulators zijn eigendom van bedrijven en niet openbaar beschikbaar.
+    Eén van de simulators die vaak in de academische wereld wordt gebruikt, is Accel-Sim~\cite{accelsim}.
+    Accel-Sim is een zeer flexibele simulator, die het mogelijk maakt om een groot aantal verschillende hardwareplatformen te simuleren.
+    Bovendien is de simulator vrij nauwkeurig, binnen de grenzen die worden gesteld door de geheimhouding van de hardware-specificaties.
+
+    Het simuleren van een volledige workload of benchmark kan echter weken, zo niet maanden duren~\cite{pks}.
+    Om dit proces te versnellen, worden \textit{sampling}-technieken gebruikt.
+    Een subset van de kernels in de workload wordt geselecteerd en alleen deze kernels worden gesimuleerd.
+    Als deze kernels correct worden gesampled en representatief zijn voor de volledige workload, kunnen de resultaten worden veralgemeend naar de volledige workload.
+
+    Enkele van deze technieken zijn \textit{Principal Kernel Analysis}~\cite{pks} en \textit{Sieve}~\cite{sieve}.
+    Op basis van profiler-data clusteren ze alle kernels in de workload.
+    Uit elk van deze clusters wordt een representatieve kernel geselecteerd om te simuleren.
+
+    De PKA-techniek gaat nog een stap verder, door de \textit{performance} van het eerste deel van een kernel te projecteren naar de rest van de kernel.
+    Het idee is dat voor bijna elke kernel de IPC stabiliseert na een bepaald aantal instructies.
+    Zodra deze stabilisatie is gedetecteerd, wordt de simulatie stopgezet en wordt aangenomen dat de rest van de kernel dezelfde IPC zal hebben.
+
+    Het nadeel van deze technieken is dat ze ervan uitgaan dat de hardware in een perfect opgewarmde toestand is.
+    Doordat tussenliggende kernels worden weggelaten, is dit niet altijd het geval.
+    Deze weggelaten kernels kunnen de hardware-toestand beïnvloeden, met name de caches en/of TLB's, wat op zijn beurt de prestaties van de gesimuleerde kernels beïnvloedt.
+    Dit probleem is niet uniek voor GPU-simulatie, maar is ook aanwezig in CPU-simulatie~\cite{blrl}, en staat bekend als het \textit{koudestart-probleem}.
+
+    Terwijl het koudestart-probleem uitgebreid is bestudeerd in CPU-simulatie, is er weinig tot geen onderzoek gedaan naar de impact ervan op GPU-simulatie.
+    In de context van CPU-simulatie zijn oplossingen voor het koudestart-probleem gebaseerd op het opwarmen van de datastructuren in de simulator, door het simuleren van extra instructies.
+    Extra simulatie is echter duur, omdat simulatie veel trager is dan uitvoering in hardware.
+    Om dit probleem in CPU-simulatie in te perken, zijn een aantal technieken voorgesteld~\cite{cpu-checkpoint,cpu-stitch-prime,cpu-merge-stitch-prime,cpu-nsl,cpu-mse,cpu-mrrl,blrl}.
+    Een andere benadering die is onderzocht, is het zoeken naar een correctiefactor~\cite{cpu-corr-fac}, die extra simulatie vermijdt door de trace van instructies te analyseren.
+
+    Dit werk levert de volgende bijdragen:
+    \begin{itemize}
+        \item Het kwantificeert de impact van het koudestart-probleem op GPU-\textit{workloads}.
+        Hiervoor zullen we zowel hardware- als simulatieresultaten bekijken.
+        \item Het stelt een aantal oplossingen voor om het koudestart-probleem in GPU-simulatie in te perken, geïnspireerd op de belangrijkste methoden die in CPU-simulatie worden gebruikt.
+        We zullen deze methoden ook met elkaar vergelijken, om te zien welke het meest effectief is.
+    \end{itemize}
+
+    \section{Het koudestart-probleem in hardware}\label{sec:hw}
+    Met behulp van NVIDIA's Nsight Compute~\cite{nsight} tool, waren we in staat om een aantal \textit{workloads} te profileren\footnote{Vanwege tijdgebrek werden slechts de eerste 20\ 000 kernels van elke workload uitgevoerd.}.
+    Om deze \textit{workloads} te profileren, werd een NVIDIA GeForce RTX 3080~\cite{nvidia-wp} gebruikt.
+    Deze GPU heeft 68 SM-kernen en 6 MB L2-cache.
+
+    Elke \textit{workload} werd twee keer geprofileerd: een keer normaal, zoals het in hardware zou draaien (\textit{noflush}), en een keer waar de caches geleegd werden tussen kernel-oproepen (\textit{flush}).
+    Nsight Compute ondersteunt deze optie door het \mintinline{bash}{--cache-control=all} argument te gebruiken.
+
+    Hieronder vindt u een lijst van de geprofileerde \textit{workloads}:
+    \begin{itemize}
+        \item De volgende \textit{benchmarks} van de Cactus suite~\cite{cactus}:
+        \begin{itemize}
+            \item Gromacs~\cite{gromacs} en LAMMPS~\cite{LAMMPS} (met zowel rhodo (LMR), als colloid (LMC) invoer); twee moleculaire simulatieprogramma's,
+            \item Gunrock~\cite{gru} met zowel wegen- (GRU), als sociale netwerken (GST),
+            \item DCGAN, \textit{neural style transform} (NST)~\cite{nst}, \textit{reinforcement learning} (RFL), \textit{spatial transformer} (SPT)~\cite{spt} en \textit{language translation} (LGT) van PyTorch, en
+        \end{itemize}
+        \item De volgende MLCommons \textit{benchmarks} (van hun MLPerf® Inference v2.0 collection):
+        \begin{itemize}
+            \item Het ResNet50 model~\cite{resnet50},
+            \item Zowel het MobileNet, als het ResNet34 variant van het SSD-model,
+            \item Het \textit{Bidirectional Encoder Representations for Transformers} (BERT)~\cite{bert}, en
+            \item Het 3D U-Net model~\cite{3d-unet}
+        \end{itemize}
+        \item De DCT-implementatie in de CUDA-Samples~\cite{samples}.
+    \end{itemize}
+
+    \begin{figure}[ht]
+        \centering
+        \appendW{../figures/abstract/box_workloads_hw.pgf}{}
+        \caption{IPC-verschillen in hardware}
+        \label{fig:hw-ipc}
+    \end{figure}
+
+    U vindt de resultaten van dit experiment in \Cref{fig:hw-ipc}.
+    Deze figuur toont het relatieve verschil in IPC (relatief ten opzichte van de \textit{noflush} IPC: $\frac{IPC_f - IPC_{nf}}{IPC_{nf}} \cdot 100\%$) voor elke \textit{workload} die hierboven is vermeld.
+    We merken op dat de meest veelbelovende \textit{workloads} DCGAN en Gunrock (op wegennetwerken) van de Cactus suite zijn, samen met DCT van de CUDA-Samples.
+
+    Echter, \textit{sampling}-methoden zoals \textit{Sieve}~\cite{sieve} vertrouwen op het gewicht van een kernel; d.w.z.\ het aantal instructies in die kernel ten opzichte van het totale aantal instructies in de \textit{workload}.
+    Bovendien worden voor elke cluster die door dergelijke methoden wordt berekend, de gewichten van de kernels in die cluster opgeteld om het gewicht van het cluster te krijgen.
+    Dat clustergewicht wordt dan gebruikt bij het generaliseren van de resultaten naar de volledige \textit{workload}; d.w.z.\ er wordt een gewogen gemiddelde genomen.
+    Wanneer we deze gewichten in aanmerking nemen, krijgen we een ander resultaat.
+
+    \begin{figure}[ht]
+        \centering
+        \appendW{../figures/abstract/bar_workloads_hw.pgf}{}
+        \caption{Gewogen IPC-verschillen in hardware}
+        \label{fig:w-hw-ipc}
+    \end{figure}
+
+    In \Cref{fig:w-hw-ipc} ziet u de gewogen IPC-verschillen voor elke \textit{workload}.
+    Voor elke \textit{workload} hebben we alle kernel-oproepen geïdentificeerd met minstens 5\% (resp.\ 10\%, 15\% en 20\%) verschil in IPC.
+    De gewichten van al die kernels werden opgeteld, wat de hoogte van de balkjes in de grafiek bepaalt.
+    Bijvoorbeeld, 3D-UNet heeft kernels ter waarde van ongeveer 10\% van de \textit{workload} met een IPC-verschil tussen 15\% en 20\%.
+
+    Met behulp van deze figuur krijgen we een iets ander beeld van de getroffen \textit{workloads}.
+    In de rest van dit artikel zullen we ons voornamelijk richten op de DCT- en 3D-UNet-\textit{workloads}.
+
+    \subsection{Hergebruik}\label{subsec:hergebruik}
+    Een factor die nogal belangrijk zal blijken te zijn, is hoeveel data er tussen kernels wordt hergebruikt.
+    We zullen ons voornamelijk richten op het voorwaartse datahergebruik; d.w.z.\ de data die door een kernel wordt gebruikt, en vervolgens opnieuw wordt gebruikt door de volgende.
+    Voor een kernel $k_i$ definiëren we het voorwaartse datahergebruik (\textit{forward reuse}) $fwd_i$ als:
+    \begin{align}
+        fwd_i = \frac{|M_i \cap M_{i+1}|}{|M_i|}
+    \end{align}
+    Hier is $M_i$ de \textit{footprint} van de kernel $k_i$ (de verzameling unieke geheugenadressen).
+
+    In \Cref{fig:fwd-hw} hebben we het voorwaartse datahergebruik gevisualiseerd voor twee \textit{workloads}.
+    De eerste (\Cref{fig:dct-fwd}) is de DCT-implementatie die we al vermeldden, en de tweede is de \textit{recursiveGaussian}-implementatie uit de CUDA SDK~\cite{samples} (\Cref{fig:recg-fwd}).
+
+    Zoals u kan zien, wordt bij DCT er veel data hergebruikt tussen kernels (consistent 100\%).
+    Aan de andere kant, de \textit{recursiveGaussian}-\textit{workload} stopt rond de 50\%.
+
+    \begin{figure}[ht]
+        \centering
+        \appendCW{../figures/hardware/dct_forward_reuse.pgf}{Voorwaarts hergebruik bij DCT}{fig:dct-fwd}{0.48}
+        \appendCW{../figures/hardware/recg_forward_reuse.pgf}{Voorwaarts hergebruik bij \textit{recursiveGaussian}}{fig:recg-fwd}{0.48}
+        \caption{Hergebruik bij DCT en \textit{recursiveGaussian}}
+        \label{fig:fwd-hw}
+    \end{figure}
+
+    \section{Het koudestart-probleem in Accel-Sim}\label{sec:sim}
+    Nadat we de \textit{workloads} in hardware hadden geprofileerd, gingen we over tot het simuleren ervan in Accel-Sim~\cite{accelsim}.
+    Accel-Sim is een zeer flexibele simulator, die het mogelijk maakt om een breed scala aan hardwareplatformen te simuleren.
+    De basis van Accel-Sim is de GPGPU-Sim-simulator~\cite{gpgpu-sim}, die een \textit{cycle-accurate simulator} is.
+
+    Voordat we de resultaten bespreken, eerst een woordje uitleg over de simulatoropstelling.
+    We gebruikten de (vooraf geteste) NVIDIA GeForce RTX3070-configuratie.
+    Enkele van de interessantere configuratieparameters worden getoond in \Cref{fig:config-sim}.
+
+    \begin{figure}[h]
+        \centering
+        \append{../figures/simulated/gpu_config}
+        \caption{Configuratie-parameters bij de simulatie}
+        \label{fig:config-sim}
+    \end{figure}
+
+    We hebben elke \textit{workload} opnieuw gesimuleerd, zoals we dat in hardware deden (zowel \textit{flush}, als \textit{noflush}).
+    Accel-Sim laat ons toe om de caches te legen tussen kernel-oproepen, door de \mintinline{bash}{--flush-l1 --flush-l2} argumenten te gebruiken.
+
+    We besloten om onze experimenten te beperken tot de DCT en 3D-UNet \textit{workloads}, omdat die het meest veelbelovend waren in hardware.
+    Een andere \textit{workload} die veelbelovend was, was de OceanFFT-\textit{workload} uit de CUDA SDK\@.
+    We hebben elke \textit{workload} beperkt tot 130 kernels (wat enkel een limiet is voor de 3D-UNet-\textit{workload}), om de simulaties haalbaar te houden.
+
+    \begin{figure}[hb]
+        \centering
+        \appendW{../figures/simulated/full_dct_ocean_unet_sim.pgf}{}
+        \caption{Gewogen gesimuleerde IPC-verschillen}
+        \label{fig:w-sim-ipc}
+    \end{figure}
+
+    De resultaten van dit experiment kan u terugvinden in \Cref{fig:w-sim-ipc}.
+    Net zoals in hardware, hebben we de gewogen IPC-verschillen voor elke \textit{workload} berekend.
+
+    Uit deze figuur kunnen we concluderen dat het koudestart-probleem veel minder ernstig is in de simulator dan in hardware.
+    We veronderstellen dat dit komt doordat de simulator een geïdealiseerde versie van de hardware is.
+    Sommige details zijn mogelijk verloren gegaan, wat op zijn beurt het koudestart-probleem zou kunnen hebben verzwakt.
+
+    \subsection{OceanFFT}\label{subsec:oceanfft}
+    OceanFFT is een \textit{workload} met een interessante eigenschap.
+    Zoals u kan zien in \Cref{fig:sim-ocean}, zijn de IPC-waarden hoger wanneer we de caches legen.
+
+    \begin{figure}[ht]
+        \centering
+        \appendW{../figures/abstract/ocean}{}
+        \caption{IPC-waarden voor OceanFFT}
+        \label{fig:sim-ocean}
+    \end{figure}
+
+    Dit is iets wat we niet zouden verwachten; we verwachten dat de caches de uitvoering versnellen, niet vertragen.
+    De kernel die het meest wordt beïnvloed door het koudestart-probleem is de tweede, die ongeveer 31\% verschil ondervindt.
+
+    We veronderstellen dat deze kernel sneller is met geleegde caches omdat hij slechts een klein deel van de gegevens van de vorige kernel hergebruikt.
+    De eerste kernel heeft een \textit{footprint} van 33.5 miljoen geheugen-adressen, waarvan de tweede er slechts 4 miljoen hergebruikt (ongeveer 12.5\%).
+
+    Wanneer er een groot aantal lijnen in de caches \textit{dirty} zijn, kan dit veel \textit{write-backs} veroorzaken.
+    Dit kan de geheugen-pijplijn vertragen, waardoor de processors stagneren, wat de IPC verlaagt.
+
+    \section{Inperkingen}\label{sec:inperking}
+    We hebben een aantal oplossingen bedacht om het koudestart-probleem in Accel-Sim in te perken:
+    \begin{itemize}
+        \item \textbf{Perfecte opwarming:} een naïeve aanpak zou zijn om alle voorafgaande kernels te simuleren, waardoor de caches opgewarmd worden.
+        Dit gaat echter rechtstreeks in tegen het idee van \textit{sampling}, en vertraagt de simulatie aanzienlijk.
+        \item \textbf{Geheugen-opwarming:} door enkel de geheugen-operaties van de voorafgaande kernels te simuleren, kunnen we de caches opwarmen.
+        Dit is een snellere aanpak dan de vorige, die er nog steeds in slaagt om de caches op te warmen.
+        Bovendien beperken we ons tot de meest recente kernels, omdat we verwachten dat deze het grootste effect zullen hebben, vanwege de \textit{temporal locality}.
+        \item \textbf{Correctiefactor:} door gebruik te maken van uitvoer van zowel \textit{trace} als simulatie, poogden we een correctiefactor te berekenen.
+        Deze correctiefactor bleek in staat te zijn om de nauwkeurigheid van zeer onnauwkeurige kernels te verhogen, ten koste van een iets lagere gemiddelde nauwkeurigheid.
+    \end{itemize}
+
+    \subsection{Geheugen-opwarming}\label{subsec:inp-mem}
+    Met behulp van een aangepaste versie van de Accel-Sim \textit{tracing}-tool, waren we in staat om een extra \textit{trace} te genereren voor elke kernel.
+    Deze \textit{trace} bevat enkel de geheugen-instructies, die kunnen worden gebruikt om de caches snel op te warmen.
+
+    Uit de DCT-\textit{workload} hebben we vier kernels gehaald die veel lijden van het koudestart-probleem.
+    Op deze kernels hebben we de simulatie uitgevoerd met en zonder de geheugen-opwarming.
+    We hebben deze resultaten ook vergeleken met de perfecte opwarming (waarbij elke enkele voorafgaande instructie wordt gesimuleerd), en de volledige geheugen-opwarming (waarbij alle geheugen-instructies van alle voorafgaande kernels worden gesimuleerd).
+
+    \begin{figure}
+        \centering
+        \appendW{../figures/mitigation/kernel-11-acc.pgf}{0.75}
+        \appendW{../figures/mitigation/kernel-13-acc.pgf}{0.75}
+        \appendW{../figures/mitigation/kernel-114-acc.pgf}{0.75}
+        \appendW{../figures/mitigation/kernel-115-acc.pgf}{0.75}
+        \caption{Geheugen-opwarming bij DCT}
+        \label{fig:mitig-dct}
+    \end{figure}
+
+    We kunnen twee grote observaties maken uit \Cref{fig:mitig-dct}:
+    \begin{enumerate}
+        \item Een enkele kernel-opwarming is meestal meer dan genoeg om de caches op te warmen; de nauwkeurigheid van alle kernels steeg tot minstens 97\%.
+        \item Door enkel geheugen-instructies uit te voeren, is er nog steeds een verschil met de perfecte nauwkeurigheid.
+        We veronderstellen dat dit komt door de herordening van instructies: aangezien tussentijdse instructies (bv.\ ALU-instructies) worden verwijderd uit de \textit{traces}, kunnen sommige geheugen-instructies worden herordend.
+        Dit heeft een verschillende staat van de caches als gevolg, wat de resultaten van de simulator kan beïnvloeden.
+    \end{enumerate}
+
+    \subsection{Correctiefactor}\label{subsec:inp-corr}
+    We zijn erin geslaagd om een formule te bedenken die het koudestart-probleem gedeeltelijk kan inperken, zonder extra simulatie, gebaseerd op de volgende observaties:
+    \begin{itemize}
+        \item We kunnen een bovengrens schatten voor de impact van het koudestart-probleem door te kijken naar het aantal \textit{cold misses}.
+        Een deel van deze missers is te wijten aan het koudestart-probleem, terwijl het andere deel inherent is aan de \textit{workload}.
+        \item Het deel van de \textit{cold misses} dat te wijten is aan het koudestart-probleem, is evenredig met de \textit{forward reuse}.
+        Enkel herhaalde toegangen kunnen worden versneld door caches, dus dit zijn de enige die door het koudestart-probleem kunnen worden beïnvloed.
+        \item Meerdere geheugenverzoeken kunnen parallel worden bediend door de \textit{DRAM-controllers}.
+        Hierdoor moeten we rekening houden met de bezetting van de geheugencontroller.
+        \item Het aantal verloren cycli als gevolg van het koudestart-probleem is evenredig met het verschil tussen de \textit{DRAM latency} en de \textit{L2 latency}.
+    \end{itemize}
+
+    Op basis van deze observaties hebben we de volgende formule opgesteld:
+    \begin{align}
+        IPC &= \frac{insn}{cycles_f - \Delta} \\
+        \Delta &= \frac{accesses}{controllers \cdot line} \cdot fwd_{i-1} \cdot (DRAM - L2)
+    \end{align}\footnote{Deze formule zal niet werken voor OceanFFT, aangezien ze het totaal aantal cycli verminderd.}
+
+    Hierbij is:
+    \begin{itemize}
+        \item $IPC$ de gecorrigeerde IPC-waarde;
+        \item $insn$ de hoeveelheid dynamisch uitgevoerde instructies;
+        \item $cycles_f$ het aantal cycli dat de kernel nodig heeft om uit te voeren;
+        \item $\Delta$ de correctiefactor;
+        \item $accesses$ de hoeveelheid unique geheugenverzoeken (een bovengrens voor het aantal \textit{cold misses});
+        \item $controllers$ het aantal geheugen-controllers (gewogen op hun bezetting);
+        \item $line$ de grootte van een lijn in de cache;
+        \item $fwd_{i-1}$ de \textit{forward reuse} van de \textit{vorige} kernel; en
+        \item $DRAM$ en $L2$ zijn de \textit{DRAM} en \textit{L2 latency}.
+    \end{itemize}
+
+    \subsection{Vergelijking}\label{subsec:inp-vergelijk}
+    \begin{figure}[hb]
+        \centering
+        \appendW{../figures/mitigation/comp-box.pgf}{}
+        \caption{Vergelijking van strategieën}
+        \label{fig:mitig-compare}
+    \end{figure}
+
+    In \Cref{fig:mitig-compare} hebben we de verschillende strategieën met elkaar vergeleken.
+    Zoals u kan zien, zijn beide strategieën in staat om de meest getroffen kernels te verbeteren.
+    De correctiefactor is echter minder nauwkeurig dan de geheugen-opwarming in het gemiddelde geval.
+    De meest veelbelovende optie is de geheugen-opwarming, die in staat is om de meest getroffen kernels te verbeteren, zonder een significante computationele kost.
+
+    \section{Conclusie}\label{sec:concl}
+    In dit artikel hebben we de impact van het koudestart-probleem op GPU-\textit{workloads} gemeten.
+    We zijn begonnen met het analyseren van de impact in hardware, waarbij we hebben vastgesteld dat het een probleem is voor een aantal \textit{workloads}.
+    We hebben stilgestaan bij het belang van \textit{forward reuse}, en zijn invloed op het koudestart-probleem.
+
+    Daarna zijn we overgegaan tot het simuleren van de \textit{workloads} in Accel-Sim.
+    We hebben gezien dat het koudestart-probleem veel minder ernstig is in de simulator dan in hardware, maar dat het nog steeds aanwezig is.
+    Een onverwacht resultaat was de OceanFFT-\textit{workload}, die sneller liep met geleegde caches.
+
+    Tenslotte hebben we enkele strategieën voor de inperking onderzocht.
+    De meest veelbelovende hiervan is gebaseerd op extra simulatie, en kunstmatige opwarming van de caches.
+    Deze methode slaagde erin de nauwkeurigheid drastisch te verbeteren, zonder een significante computationele kost.
+    De andere weg die we hebben verkend, was een correctiefactor, gebaseerd op het aantal \textit{cold misses} en de mate van datahergebruik.
+    Deze methode was in staat om de getroffen kernels te elimineren, maar ten koste van een iets lagere gemiddelde nauwkeurigheid.
+
+    \bibliographystyle{ieeetr}
+    \bibliography{abstract}
+
+\end{document}

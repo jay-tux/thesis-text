@@ -109,7 +109,7 @@ For each kernel, we have profiled all memory instructions and extracted the uniq
 In \Cref{fig:dct_reuse}, you can see the data reuse ratio for the DCT workload.
 We have analyzed both the forward and backward data reuse for each kernel:
 \begin{itemize}
-    \item \textbf{Forward data reuse:} the amount of unique memory addresses in kernel $k_{i}$ that are reused by kernel $k_{i}$ (as seen in \Cref{fig:dct_forward_reuse}); i.e.
+    \item \textbf{Forward data reuse:} the amount of unique memory addresses in kernel $k_{i}$ that are reused by kernel $k_{i+1}$ (as seen in \Cref{fig:dct_forward_reuse}); i.e.
     \begin{align}
         fwd_i = \frac{|\text{footprint } k_{i} \cap \text{footprint } k_{i+1}|}{|\text{footprint } k_{i}|}
     \end{align}

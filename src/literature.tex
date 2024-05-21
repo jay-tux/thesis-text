@@ -8,7 +8,7 @@ The first of these provides the simulator we use, while the latter two provide t
 As outlined in the AccelSim paper\ ~\cite{accelsim}, most of the ISA and architecture changes in GPU innovation are usually closed off by the industry.
 This makes it harder for research to keep up with industry changes.
 
-The proposed simulator AccelSim, which is based on the older GPGPU-Sim simulator~\cite{gpgpu-sim}.
+The proposed simulator is AccelSim, which is based on the older GPGPU-Sim simulator~\cite{gpgpu-sim}.
 It consists of four main components:
 \begin{enumerate}
     \item The flexible frontend;
@@ -74,7 +74,7 @@ AccelSim is a very flexible and detailed simulator, which can be used to simulat
 It is also able to simulate a wide range of cache designs, and can be extended to support domain-specific pipelines.
 The correlation generation tool and configuration tuner are used to verify the simulator's accuracy, and to extend it to newer architectures.
 
-The current version can simulate up to a speed of 12\thinspace500 warp instructions per second, which still improves upon the previous GPGPU-Sim version.
+The current version can simulate up to a speed of 12\thinspace500 warp instructions per second~\cite{accelsim}, which still improves upon the previous GPGPU-Sim version.
 Half of this speedup comes from the trace-driven mode, which avoids overhead of functional execution.
 The user can also set kernel-based checkpoints to avoid simulation of non-interesting regions.
 
@@ -86,7 +86,7 @@ To avoid this, the simulator only ticks the active components.
 
 \section{Kernel Sampling}\label{sec:kernel-sampling}
 Simulation has a lot of benefits; like the inherently configurable design, the flexibility, and the ability to reconfigure hardware to analyze model changes, but it also has the downside of its inherent enormous overhead.
-The authors of the PKA paper~\cite{pks} show that workloads which would take mere seconds on real hardware, could take upwards of a century on a simulator.
+The authors of the PKA paper~\cite{pks} show that workloads which would take seconds on real hardware, could take upwards of a century on a simulator.
 This drawback means that each simulation platform must limit the number of instructions.
 
 Many approaches attempt to restrict the workload and/or platform to speed up simulation.
@@ -173,7 +173,7 @@ According to the authors, a value of $s = 0.25$ should be fine.
 
 \section{Improving PKA}\label{sec:improving-pka-sieve}
 While PKA is a very powerful technique, leading to drastically lower simulation times while still maintaining a high accuracy for most application, it is not perfect yet.
-The main issues with PKA, as outlined in the Sieve paper~\cite{sieve}, are:
+The main issues with PKA, as outlined in Sieve~\cite{sieve}, are:
 \begin{itemize}
     \item Since the PKS phase assumes the same execution time for all invocations in a cluster, there is a very large variability in cycle count.
     \item The heavy-duty profiling phase is very time-consuming.
@@ -198,7 +198,7 @@ The strata are organized in three tiers:
     \item \textbf{Tier 2:} only a small amount of variability is allowed in tier 2, with a configurable maximum.
     \item \textbf{Tier 3:} the remaining instances are placed in tier 3, where the variability is allowed to be much larger.
 \end{enumerate}
-In order to determine to which tier a kernel invocation belongs, the Coefficient of Variation $CoV = \frac{\sigma}{\mu}$ (the ratio between standard deviation and mean instruction count) is used.
+In order to determine which tier a kernel invocation belongs to, the Coefficient of Variation $CoV = \frac{\sigma}{\mu}$ (the ratio between standard deviation and mean instruction count) is used.
 A threshold $\theta$ can be set by the user; where a lower $\theta$ implies less variability within the strata and higher accuracy at the cost of a longer simulation time.
 The authors found that $\theta = 0.4$ is a good compromise.
 

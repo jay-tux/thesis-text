@@ -5,4 +5,9 @@ out/*
 !out/abstract/
 out/abstract/*
 !out/abstract/abstract.pdf
+
+!out/abstract_nl/
+out/abstract_nl/*
+!out/abstract_nl/abstract_nl.pdf
+
 thesis-text.iml

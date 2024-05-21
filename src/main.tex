@@ -17,6 +17,7 @@
 \usepackage{arydshln}
 \usepackage{tikz}
 \usepackage{pdfpages}
+\usepackage{tocbibind}
 \usepackage[outputdir=../out]{minted}
 \usepackage[noabbrev]{cleveref}
 
@@ -50,10 +51,10 @@
     \maketitle
     \pagenumbering{roman}
     \include{summary}
-%    \include{abstract}
     \includepdf[pages=-]{../out/abstract/abstract.pdf}
+    \includepdf[pages=-]{../out/abstract_nl/abstract_nl.pdf}
     \include{reuse}
-    
+
     \tableofcontents
     \newpage
 
@@ -68,5 +69,8 @@
 
     \bibliographystyle{ieeetr}
     \bibliography{main}
+
+    \appendix
+    \include{repo}
 
 \end{document}
