@@ -1,6 +1,8 @@
+\newcommand{\ghlink}[1]{\href{#1}{#1}}
+
 \chapter{Code repository}\label{ch:repo}
 Both mitigations required slight changes to both the Accel-Sim simulator and the GPGPU-Sim version it depends on.
-These changes are available in the following repository: \url{https://github.ugent.be/jonsys/accel-sim-cold-start}, and \url{https://github.ugent.be/jonsys/gpgpu-sim-cold-start}. % Todo: perhaps use personal GH because of login wall
+These changes are available in the following repository: \ghlink{https://github.com/jay-tux/accel-sim-cold-start}, and \ghlink{https://github.com/jay-tux/gpgpu-sim-cold-start}.
 
 \section{Memory-only simulation}\label{sec:repo-mem-only}
 To enable memory-only simulation, we only modified the \verb|util/tracer_nvbit/tracer_tool/tracer_tool.cu|.
