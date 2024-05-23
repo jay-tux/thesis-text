@@ -24,7 +24,6 @@
 \usepackage{placeins}
 \usepackage{arydshln}
 \usepackage{cleveref}
-\newcommand*{\acronym}[1]{{\addfontfeature{Letters=UppercaseSmallCaps}#1}}
 
 \title{Quantifying and Mitigating the Cold-Start Problem in GPU Simulation}
 
@@ -63,7 +62,7 @@
         In order to verify that these changes are improvements, simulators~\cite{accelsim} are used.
         Modern simulation techniques rely on sampling~\cite{pks, sieve}.
         These sampling techniques often assume a perfectly warmed-up hardware state, however this is not always the case.
-        This article measures the impact of the cold-start problem on GPU workloads (both in hardware and in simulator), and proposes some mitigations. % TODO: perhaps only one?
+        This article measures the impact of the cold-start problem on GPU workloads (both in hardware and in simulator), and proposes some mitigations.
     \end{abstract}
 
     \maketitle
@@ -117,7 +116,7 @@
         \item It quantifies the impact of the cold-start problem on GPU workloads.
         To this end, we will look at both hardware (in-silicon) results, and simulator results.
         \item It proposes a number of mitigations to the cold-start problem in GPU simulation, inspired by the main avenues used in CPU simulation.
-        We will also compare these methods against one another, to see which one is the most effective. % TODO: rewrite if only one
+        We will also compare these methods against one another, to see which one is the most effective.
     \end{itemize}
 
     \section{The cold-start problem in hardware}\label{sec:hw}
@@ -259,7 +258,7 @@
     If a lot of the cache lines are dirty, this causes a lot of write-backs, which might pile up in the memory hierarchy.
     This can stall the memory pipeline, which in turn causes the processors to stall, reducing the IPC\@.
 
-    \section{Mitigations}\label{sec:mitig} % TODO: singular if only one
+    \section{Mitigations}\label{sec:mitig}
     In order to mitigate the cold-start problem, we have come up with a number of solutions:
     \begin{itemize}
         \item \textbf{Perfect warmup:} a naive approach would be to simulate all preceding kernels, forcing the caches to be warm.

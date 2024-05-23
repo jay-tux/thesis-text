@@ -35,8 +35,9 @@ Each of these schedulers has an associated register file and is in turn composed
 
 The combination of a warp scheduler with its register file and execution units is called a sub-core.
 These only share an instruction cache and memory subsystem.
-\\
-\\
+
+\vspace{5mm}
+
 As with the frontend, the performance model is also very flexible.
 It can simulate either a unified or split L1 Data cache (L1D), as the device driver can configure the cache at runtime.
 In many modern workloads, an adaptive cache is used.
@@ -63,8 +64,9 @@ After running these micro-benchmarks, the tuner reads the results and provides a
 Some parameters cannot be determined by the benchmarks themselves, like warp scheduling policy, memory scheduling, and some L2 cache parameters (interleaving and hash function).
 To determine these, the tuner will attempt to simulate each possible combination on a set of memory bandwidth micro-benchmarks.
 The configuration with the highest average hardware correlation is then picked to be the correct one.
-\\
-\\
+
+\vspace{5mm}
+
 The other component, the correlation generation tool, can be used to generate targeted information on inaccuracies.
 This information is important because the tuner might not be able to detect and/or capture drastic architectural changes.
 These changes often require manual intervention.
@@ -131,8 +133,9 @@ During the profiling phase, all metrics gathered are micro-architecture-independ
 This means that they depend only on the workload, not the GPU being profiled.
 By making sure that the metrics are independent, we can avoid discrepancies (similar to the differences between x86 instructions and micro-ops when simlating CPUs).
 The metrics used are:
-\\
-\\
+
+\vspace{5mm}
+
 \newcommand{\tabitem}{~~\textbullet~~}
 \begin{tabular}{p{0.45\textwidth}p{0.45\textwidth}}
     \tabitem Coalesced global loads and stores & \tabitem Thread global atomics \\
@@ -141,8 +144,9 @@ The metrics used are:
     \tabitem Thread local loads                & \tabitem Thread block count    \\
     \tabitem Thread shared loads and stores
 \end{tabular}
-\\
-\\
+
+\vspace{5mm}
+
 After gathering results from the heavy-duty profiler (if needed, for only a limited number of kernels), principal component analysis (PCA) is used to reduce the dimensionality of the data.
 This makes sure that we can avoid the curse of dimensionality, as the principal dimensions will have the highest variability.
 Once we have the smaller dataset, we use k-means to cluster the data.
