@@ -7,7 +7,7 @@ In this chapter, we will present our conclusions, discussing both quantification
 
 \section{Quantification}\label{sec:quantification}
 We started by analyzing whether the cold-start problem is an actual issue.
-To this end, we analyzed multiple workloads on real hardware, and a limited number of them in the AccelSim simulator.
+To this end, we analyzed multiple workloads on real hardware, and a limited number of them in the Accel-Sim simulator.
 From this, we have concluded that the cold-start problem is a real issue, affecting the performance of GPUs in a significant way.
 
 \subsection{The cold-start problem in hardware}\label{subsec:cold-start-in-hardware}
@@ -27,7 +27,7 @@ From this, we can compute both \textit{forward} ($fwd_i$) and \textit{backward d
 \end{align}
 
 \subsection{The cold-start problem in simulation}\label{subsec:cold-start-in-simulation}
-From all workloads we have analyzed in the hardware, we have selected a subset to analyze in the AccelSim simulator.
+From all workloads we have analyzed in the hardware, we have selected a subset to analyze in the Accel-Sim simulator.
 The main ones we have analyzed were DCT, 3D U-Net, and OceanFFT\@.
 
 From this analysis, we have concluded that the cold-start problem is less severe in the simulator.
@@ -64,7 +64,7 @@ The three avenues discussed were:
 \subsection{Memory-only simulation}\label{subsec:memory-only-simulation}
 From the DCT workload, we have selected four kernels to analyze.
 For each of those kernels, we simulated the memory instructions of up to 10 previous kernels.
-To be able to do this, we have modified AccelSim's builtin NVBit tool.
+To be able to do this, we have modified Accel-Sim's builtin NVBit tool.
 
 Our main conclusion from this analysis is that the memory-only simulation is very accurate.
 Even simulating only a single additional kernel results in incredible accuracy.

@@ -1,12 +1,12 @@
-\chapter{The Cold-Start Problem in AccelSim}\label{ch:sim-analysis}
+\chapter{The Cold-Start Problem in Accel-Sim}\label{ch:sim-analysis}
 
 We can now safely conclude that GPGPU hardware and workloads suffer from cold caches.
 In this chapter, we will attempt to validate the existence of the cold-start problem when simulating.
-To this end, we will use the AccelSim framework, with a similar configuration to the hardware we used in the previous chapter.
+To this end, we will use the Accel-Sim framework, with a similar configuration to the hardware we used in the previous chapter.
 
 \section{Simulation setup}\label{sec:simulation-setup}
-The simulator we will be using is AccelSim\cite{accelsim}.
-As discussed in \Cref{sec:gpu-simulation}, AccelSim uses the GPGPU-Sim\cite{gpgpu-sim} system to perform actual simulation.
+The simulator we will be using is Accel-Sim\cite{accelsim}.
+As discussed in \Cref{sec:gpu-simulation}, Accel-Sim uses the GPGPU-Sim\cite{gpgpu-sim} system to perform actual simulation.
 However, we are able to speed everything up by avoiding full-functional simulation.
 To achieve this, we use pre-generated traces, which can be replayed in the simulator.
 This also means that we can just use compiled binaries, not needing any source at all.
@@ -22,7 +22,7 @@ Some of its configuration parameters are shown in \Cref{fig:sim_config}.
 \end{figure}
 
 Just like with the hardware analysis, we will be simulating each workload twice: once with the cache flushed between kernel invocations, and once without.
-This is a feature that AccelSim natively supports, using the \verb|-flush-l1 -flush-l2| arguments.
+This is a feature that Accel-Sim natively supports, using the \verb|-flush-l1 -flush-l2| arguments.
 
 \FloatBarrier
 \section{Preparation}\label{sec:preparation}
@@ -32,22 +32,22 @@ However, we need a cycle-level trace for the simulator, which means that we will
 
 Preparing a workload for simulation has two big steps:
 \begin{enumerate}
-    \item \textit{Profiling:} AccelSim requires a cycle-level trace.
+    \item \textit{Profiling:} Accel-Sim requires a cycle-level trace.
     We will discuss the exact process below, in \Cref{subsec:profiling-phase}.
     \item \textit{Post-processing:} the trace, as generated in the profiling phase, is not yet fit for simulation.
-    AccelSim includes a post-processing tool, which allows us to convert the trace.
+    Accel-Sim includes a post-processing tool, which allows us to convert the trace.
     We will also shortly discuss this in \Cref{subsec:profiling-phase}.
 \end{enumerate}
 
 \subsection{Profiling phase}\label{subsec:profiling-phase}
-One of the components of the AccelSim framework is an NVBit\cite{nvbit} tool.
+One of the components of the Accel-Sim framework is an NVBit\cite{nvbit} tool.
 
 NVBit is a framework, developed by NVIDIA, to instrument CUDA applications.
 It allows us to, among others, catch certain events (like kernel invocations), and insert additional instructions and calls in a kernel.
 Each NVBit tool is compiled into a shared library, which is then injected into the application.
 To this end, the \verb|LD_PRELOAD| trick is used; which allows us to load a shared library before any other library.
 
-AccelSim's tool is in the \verb|util/tracer_nvbit/tracer_tool| directory.
+Accel-Sim's tool is in the \verb|util/tracer_nvbit/tracer_tool| directory.
 It roughly works like this:
 \begin{enumerate}
     \item The runtime will register that the NVBit tool has declared the \verb|nvbit_at_cuda_event| function.
@@ -72,7 +72,7 @@ These sorted traces are each written to their own new file, while an additional 
 
 \FloatBarrier
 \section{Simulation results}\label{sec:simulation-results}
-In this section, we will show that the impact of this problem persists in the AccelSim simulator.
+In this section, we will show that the impact of this problem persists in the Accel-Sim simulator.
 However, one of the first things we have noticed is that the simulator is affected much differently from the real hardware.
 
 Due to the inherent overhead in simulating GPUs, we had to limit the number of kernels we could simulate(in this case, up to 130, which fit the DCT nicely, but served as a cutoff for 3D-UNet), as well as which workloads we could focus on.

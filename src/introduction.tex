@@ -79,7 +79,7 @@ Two factors hinder us in this regard:
 This means that many simulators used in academia suffer a hit on their accuracy.
 
 Most GPU simulators are cycle-level, meaning that they simulate the hardware at the clock cycle level.
-Some contemporary examples are Barra~\cite{barra}, GPUOcelot~\cite{ocelot}, Multi2Sim~\cite{multi2sim}, gem5~\cite{gem5}, GPGPU-Sim~\cite{gpgpu-sim}, and its derivative AccelSim~\cite{accelsim}.
+Some contemporary examples are Barra~\cite{barra}, GPUOcelot~\cite{ocelot}, Multi2Sim~\cite{multi2sim}, gem5~\cite{gem5}, GPGPU-Sim~\cite{gpgpu-sim}, and its derivative Accel-Sim~\cite{accelsim}.
 
 As Jain et al.~\cite{sim-method} point out, the choice of which ISA to simulate can have an impact on the accuracy of the simulation results.
 They compared the accuracy of simulating at the PTX level to simulating at the SASS level when using the GPGPU-Sim simulator.
@@ -143,7 +143,7 @@ From this data, we select the following workloads:
 \end{itemize}
 These are selected based both on how much they were impacted by the cold-start problem, and by their feasible runtime in the simulator (for 3D-UNet we limited the execution to the first 130 kernels).
 
-After profiling using the NVBit tool that comes with AccelSim, we will simulate these workloads, analyzing the results in \Cref{ch:sim-analysis}.
+After profiling using the NVBit tool that comes with Accel-Sim, we will simulate these workloads, analyzing the results in \Cref{ch:sim-analysis}.
 Each workload will be run twice again, so that we can compare the performance impact of the cold-start problem on these workloads.
 The main conclusion will be that the cold-start problem does exist in the simulator as well, albeit with a very different impact.
 Overall, the simulator will suffer less from the cold-start problem than the hardware, but the impact will still be noticeable.

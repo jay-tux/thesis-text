@@ -22,7 +22,7 @@ In \Cref{sec:trace-info,sec:kernel-selection}, we will focus on the second optio
 
 \FloatBarrier
 \section{Gathering trace info}\label{sec:trace-info}
-The AccelSim~\cite{accelsim} tool comes with an NVBit~\cite{nvbit} tool and post-processor which are already used to generate the instruction-level traces that are eventually fed to the simulator itself.
+The Accel-Sim~\cite{accelsim} tool comes with an NVBit~\cite{nvbit} tool and post-processor which are already used to generate the instruction-level traces that are eventually fed to the simulator itself.
 By default, this tool generates a number of files:
 \begin{itemize}
     \item \verb|traces/kernelslist|: a list of all kernels that were run, with their respective kernel IDs.
@@ -38,7 +38,7 @@ We use that information to filter out the instructions we need.
 As with the original traces, we need to post-process each memory trace before feeding it to the simulator.
 This post-processing step sorts the instructions by their thread block, allowing the simulator to easily access the next instruction.
 By using the same format as the original tool, we ensure that the existing post-processor can also handle these new files\footnote{
-    \textit{Note:} AccelSim by default uses a compressed format for memory instructions, taking up less disk space in their traces.
+    \textit{Note:} Accel-Sim by default uses a compressed format for memory instructions, taking up less disk space in their traces.
     However, due to time constraints, we have elected to work with the uncompressed format, which takes up more disk space.
 }.
 
@@ -236,7 +236,7 @@ Not all workloads use all memory controllers evenly - in the worst case, a singl
 In that case, it would be incorrect to use the total number of controllers in the formula.
 To mitigate this, we compute the evenly used controllers, and use that value in the formula.
 
-AccelSim outputs memory controller data under the form of number of DRAM requests made, per controller, per bank.
+Accel-Sim outputs memory controller data under the form of number of DRAM requests made, per controller, per bank.
 Additionally, this data is output for both reads and writes.
 
 We compute the evenly used controllers from the average occupancy of each controller ($occ_{ctrl}$) as follows:

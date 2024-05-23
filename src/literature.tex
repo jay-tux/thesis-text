@@ -1,14 +1,14 @@
 \chapter{Literature Review}\label{ch:literature-review}
 The topic of GPU simulation has been studied extensively, albeit not as extensively as CPU simulation.
 Before continuing with the cold-start problem, we will shortly discuss the current state of GPU simulation.
-The three main papers this thesis is based on are \textit{AccelSim}~\cite{accelsim}, \textit{Principal Kernel Analysis}~\cite{pks}, and \textit{Sieve}~\cite{sieve}.
+The three main papers this thesis is based on are \textit{Accel-Sim}~\cite{accelsim}, \textit{Principal Kernel Analysis}~\cite{pks}, and \textit{Sieve}~\cite{sieve}.
 The first of these provides the simulator we use, while the latter two provide the kernel sampling techniques that are commonly used to speed up simulation.
 
 \section{GPU Simulation}\label{sec:gpu-simulation}
-As outlined in the AccelSim paper\ ~\cite{accelsim}, most of the ISA and architecture changes in GPU innovation are usually closed off by the industry.
+As outlined in the Accel-Sim paper\ ~\cite{accelsim}, most of the ISA and architecture changes in GPU innovation are usually closed off by the industry.
 This makes it harder for research to keep up with industry changes.
 
-The proposed simulator is AccelSim, which is based on the older GPGPU-Sim simulator~\cite{gpgpu-sim}.
+The proposed simulator is Accel-Sim, which is based on the older GPGPU-Sim simulator~\cite{gpgpu-sim}.
 It consists of four main components:
 \begin{enumerate}
     \item The flexible frontend;
@@ -18,18 +18,18 @@ It consists of four main components:
 \end{enumerate}
 
 
-\subsection{AccelSim Frontend}\label{subsec:accelsim-frontend}
-An important improvement which AccelSim brings, is the very flexible frontend.
+\subsection{Accel-Sim Frontend}\label{subsec:accelsim-frontend}
+An important improvement which Accel-Sim brings, is the very flexible frontend.
 The existing GPGPU-Sim is largely limited to virtual ISA (vISA) execution-driven simulation, using PTX (parallel thread execution) instructions.
-AccelSim improves upon this by adding support for trace-driven machine ISA (mISA) simulation, which uses the actual SASS (source and assembly) code.
+Accel-Sim improves upon this by adding support for trace-driven machine ISA (mISA) simulation, which uses the actual SASS (source and assembly) code.
 
 In trace-driven mode, the simulator reads the mISA trace and converts it into the internal ISA-independent representation.
 This representation has a one-to-one correspondence with SASS instructions, where the active mask and memory addresses are embedded in the trace itself.
 Conversely, the execution-driven mode requires the computation of the active mask and memory addresses at runtime, which is done by emulation of the PTX code.
 Finally, another benefit of the mISA is that it includes the actual register allocation, while the vISA assumes an infinite amount of registers.
 
-\subsection{AccelSim Performance Model}\label{subsec:accelsim-performance-model}
-AccelSim's performance model attempts to mimic actual GPU hardware as closely as possible.
+\subsection{Accel-Sim Performance Model}\label{subsec:accelsim-performance-model}
+Accel-Sim's performance model attempts to mimic actual GPU hardware as closely as possible.
 To this end, it is structured in a number of streaming multiprocessors (SMs), each of which is composed of a number of warp schedulers.
 Each of these schedulers has an associated register file and is in turn composed of a number of execution units.
 
@@ -71,8 +71,8 @@ The other component, the correlation generation tool, can be used to generate ta
 This information is important because the tuner might not be able to detect and/or capture drastic architectural changes.
 These changes often require manual intervention.
 
-\subsection{AccelSim Conclusion}\label{subsec:accelsim-conclusion}
-AccelSim is a very flexible and detailed simulator, which can be used to simulate both vISA and mISA code.
+\subsection{Accel-Sim Conclusion}\label{subsec:accelsim-conclusion}
+Accel-Sim is a very flexible and detailed simulator, which can be used to simulate both vISA and mISA code.
 It is also able to simulate a wide range of cache designs, and can be extended to support domain-specific pipelines.
 The correlation generation tool and configuration tuner are used to verify the simulator's accuracy, and to extend it to newer architectures.
 
