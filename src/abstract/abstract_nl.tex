@@ -306,11 +306,11 @@
         \item Het aantal verloren cycli als gevolg van het koudestart-probleem is evenredig met het verschil tussen de \textit{DRAM latency} en de \textit{L2 latency}.
     \end{itemize}
 
-    Op basis van deze observaties hebben we de volgende formule opgesteld:
+    Op basis van deze observaties hebben we de volgende formule opgesteld\footnote{Deze formule zal niet werken voor OceanFFT, aangezien ze het totaal aantal cycli verminderd.}:
     \begin{align}
         IPC &= \frac{insn}{cycles_f - \Delta} \\
         \Delta &= \frac{accesses}{controllers \cdot line} \cdot fwd_{i-1} \cdot (DRAM - L2)
-    \end{align}\footnote{Deze formule zal niet werken voor OceanFFT, aangezien ze het totaal aantal cycli verminderd.}
+    \end{align}
 
     Hierbij is:
     \begin{itemize}

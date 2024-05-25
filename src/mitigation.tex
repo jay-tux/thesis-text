@@ -193,7 +193,7 @@ All the data used for that formula can be gathered by simulating a single kernel
 However, we have to be careful when finding a correction factor.
 Since some factors that could impact cache state (e.g.\ the number of cache evictions) are hardware- and platform-dependent, we could end up with a correction factor that only works for a specific platform.
 
-\subsection{A Possible Formula}\label{subsec:formula}
+\subsection{Proposed model}\label{subsec:formula}
 Through analysis of the data, we have come up with a formula that allows use to compute a correction factor.
 This correction factor proved very effective, resulting in an average 95\% accuracy for the DCT workload.
 Especially for problematic kernels (kernels suffering from the cold-start problem), this correction factor succeeded in improving accuracy.

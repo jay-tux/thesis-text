@@ -310,11 +310,11 @@
         \item The number of cycles lost due to the cold-start problem is proportional to the difference in latency between DRAM and the L2 cache.
     \end{itemize}
 
-    Using these observations, we have come up with the following formula:
+    Using these observations, we have come up with the following formula\footnote{Since we use a subtractive factor for the number of cycles, this formula can not be used for OceanFFT.}:
     \begin{align}
         IPC &= \frac{insn}{cycles_f - \Delta} \\
         \Delta &= \frac{accesses}{controllers \cdot line} \cdot fwd_{i-1} \cdot (DRAM - L2)
-    \end{align}\footnote{Since we use a subtractive factor for the number of cycles, this formula can not be used for OceanFFT.}
+    \end{align}
 
     Where:
     \begin{itemize}
